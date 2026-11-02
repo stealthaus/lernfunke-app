@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lernfunke</title>
+  <meta name="description" content="Lernfunke – kurze Erklärungen mit Grafiken, Quiz und Mini-Spiele.">
+  <meta name="theme-color" content="#6741d9">
+  <!-- iPhone: in Safari Teilen → „Zum Home-Bildschirm“ -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lernfunke">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236741d9'/%3E%3Cpath d='M12 4l1.8 5.2L19 11l-5.2 1.8L12 18l-1.8-5.2L5 11l5.2-1.8z' fill='%23ffd43b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/learn.css">
+  <script>
+    // Theme vor dem ersten Zeichnen setzen (kein Aufblitzen)
+    try {
+      var d = JSON.parse(localStorage.getItem('lernfunke.v2') || 'null');
+      var t = d ? d.settings && d.settings.theme && d.settings.theme.v : ((JSON.parse(localStorage.getItem('lernfunke.v1')) || {}).settings || {}).theme;
+      if (t && t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app"><noscript>Lernfunke braucht JavaScript.</noscript></div>
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Kern -->
+  <script src="js/core/util.js"></script>
+  <script src="js/core/markdown.js"></script>
+  <script src="js/core/store.js"></script>
+  <script src="js/core/fx.js"></script>
+  <script src="js/core/registry.js"></script>
+  <!-- Grafiken & Schritt-Typen -->
+  <script src="js/figures.js"></script>
+  <script src="js/steps/basic.js"></script>
+  <script src="js/steps/questions.js"></script>
+  <script src="js/steps/arrange.js"></script>
+  <script src="js/steps/games.js"></script>
+  <!-- Ansichten -->
+  <script src="js/views/player.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/topic.js"></script>
+  <script src="js/views/practice.js"></script>
+  <script src="js/core/sync.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+/* ==========================================================
+   Lernfunke – Grundlagen: Farben, Typografie, Buttons
+   ========================================================== */
+
+:root {
+  color-scheme: light;
+  --brand: #6741d9;
+  --accent: var(--brand);
+  --lift: 0%;      /* wie stark Akzent-Text aufgehellt wird (dunkel: mehr) */
+  --soft: 12%;     /* Deckkraft der zarten Akzentflächen */
+
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #f1efe9;
+  --surface-3: #e6e3db;
+  --text: #1f1d1a;
+  --muted: #6b675f;
+  --border: #e2ded4;
+  --border-strong: #8a857a; /* Umriss von Bedienelementen, ≥ 3:1 (WCAG 1.4.11) */
+
+  --good: #2b7a3a;
+  --good-strong: #268039;
+  --good-bg: #ebfbee;
+  --bad: #c92a2a;
+  --bad-strong: #e03131;
+  --bad-bg: #fff1f1;
+  --warn: #a35200;
+  --warn-bg: #fff8e1;
+
+  /* Diagramm- und Kategorienfarben */
+  --c1: #4263eb;
+  --c2: #0ca678;
+  --c3: #f08c00;
+  --c4: #d6336c;
+  --c5: #7048e8;
+  --c6: #1098ad;
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow-sm: 0 1px 2px rgb(40 30 10 / 0.06);
+  --shadow: 0 1px 2px rgb(40 30 10 / 0.05), 0 6px 22px rgb(40 30 10 / 0.07);
+  --shadow-lg: 0 14px 44px rgb(40 30 10 / 0.18);
+  --font: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --maxw: 1080px;
+  --measure: 68ch; /* max. Zeilenlänge für Fließtext */
+
+  /* Abstände (4er-Raster) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* Code-Blöcke (immer dunkel, daher ein Farbsatz für beide Modi) */
+  --code-bg: #1d1d23;
+  --code-text: #e9e9ee;
+  --code-muted: #8e8e9c;
+  --code-hl: rgb(255 212 59 / 0.13);
+  --code-hl-bar: #ffd43b;
+  --code-string: #c3e88d;
+  --code-keyword: #c792ea;
+  --code-annotation: #ffcb6b;
+  --code-number: #f78c6c;
+  --code-type: #82aaff;
+  --code-key: #89ddff;
+  --code-var: #f07178;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --lift: 45%;
+    --soft: 22%;
+    --bg: #121215;
+    --surface: #1b1b20;
+    --surface-2: #24242a;
+    --surface-3: #303037;
+    --text: #ececef;
+    --muted: #a3a3ad;
+    --border: #33333b;
+    --border-strong: #6e6e7a;
+    --good: #69db7c;
+    --good-bg: #15291b;
+    --bad: #ff8787;
+    --bad-bg: #351a1c;
+    --warn: #ffc078;
+    --warn-bg: #33270f;
+    --c1: #748ffc;
+    --c2: #38d9a9;
+    --c3: #ffa94d;
+    --c4: #f783ac;
+    --c5: #9775fa;
+    --c6: #3bc9db;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 22px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 14px 44px rgb(0 0 0 / 0.55);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --lift: 45%;
+  --soft: 22%;
+  --bg: #121215;
+  --surface: #1b1b20;
+  --surface-2: #24242a;
+  --surface-3: #303037;
+  --text: #ececef;
+  --muted: #a3a3ad;
+  --border: #33333b;
+  --border-strong: #6e6e7a;
+  --good: #69db7c;
+  --good-bg: #15291b;
+  --bad: #ff8787;
+  --bad-bg: #351a1c;
+  --warn: #ffc078;
+  --warn-bg: #33270f;
+  --c1: #748ffc;
+  --c2: #38d9a9;
+  --c3: #ffa94d;
+  --c4: #f783ac;
+  --c5: #9775fa;
+  --c6: #3bc9db;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 22px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 14px 44px rgb(0 0 0 / 0.55);
+}
+
+/* Abgeleitete Akzentfarben – auch dort neu berechnen, wo --accent lokal gesetzt wird */
+:root,
+[style*="--accent"] {
+  --accent-text: color-mix(in srgb, var(--accent), white var(--lift));
+  --accent-soft: color-mix(in srgb, var(--accent) var(--soft), var(--surface));
+  --accent-line: color-mix(in srgb, var(--accent) 40%, var(--surface));
+  --accent-deep: color-mix(in srgb, var(--accent) 62%, black);
+  /* gefüllte Flächen mit weißem Text: leicht abgedunkelt, damit jede Themenfarbe ≥ 4,5:1 schafft */
+  --accent-strong: color-mix(in srgb, var(--accent) 82%, black);
+  --focus: var(--accent-text);
+}
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+img,
+svg {
+  max-width: 100%;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: var(--accent-text);
+}
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5em;
+  text-wrap: balance;
+  hyphens: manual;
+}
+h1 {
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 800;
+}
+h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+h3 {
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+p {
+  margin: 0 0 0.8em;
+  text-wrap: pretty;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+/* Programmatischer Fokus (z. B. Überschrift eines neuen Schritts) braucht keinen Ring */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+[hidden] {
+  display: none !important;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+kbd {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.muted {
+  color: var(--muted);
+}
+.danger-text {
+  color: var(--bad);
+}
+
+/* ---------- Icons ---------- */
+.ic {
+  display: inline-flex;
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+.ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.68rem 1.2rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  font-weight: 750;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.btn-primary {
+  background: var(--accent-strong);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--accent-deep);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--accent-deep);
+}
+.btn:disabled {
+  background: var(--surface-3);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.btn-lg {
+  padding: 0.85rem 1.6rem;
+  font-size: 1.05rem;
+  min-width: 9.5rem;
+}
+.btn-sm {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.86rem;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.btn-soft {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 3px 0 var(--surface-3);
+}
+.btn-soft:hover {
+  background: var(--surface-3);
+}
+.btn-good {
+  background: var(--good-strong);
+  color: #fff;
+  box-shadow: 0 3px 0 #237032;
+}
+.btn-danger {
+  background: var(--bad-strong);
+  color: #fff;
+  box-shadow: 0 3px 0 #a51d1d;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+.icon-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.icon-btn .ic {
+  width: 22px;
+  height: 22px;
+}
+.icon-btn.sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.icon-btn.sm .ic {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------- Kleinteile ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.18em 0.65em;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.tag-sm {
+  font-size: 0.72rem;
+  padding: 0.1em 0.55em;
+}
+.mini-bar {
+  height: 8px;
+  flex: 1;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.mini-bar > div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+.mini-bar.lg {
+  height: 12px;
+}
+
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.ring circle {
+  fill: none;
+}
+.ring-bg {
+  stroke: var(--surface-3);
+}
+.ring-fg {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s ease;
+}
+.ring-label {
+  position: relative;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+/* ---------- Markdown-Inhalte ---------- */
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md ul,
+.md ol {
+  margin: 0 0 0.8em;
+  padding-left: 1.3em;
+}
+.md li {
+  margin: 0.25em 0;
+}
+.md li::marker {
+  color: var(--accent-text);
+}
+.md h4 {
+  margin: 1.1em 0 0.4em;
+  font-size: 1.02rem;
+}
+.md blockquote {
+  margin: 0 0 0.8em;
+  padding: 0.6em 1em;
+  border-left: 4px solid var(--accent-line);
+  background: var(--surface-2);
+  border-radius: 0 10px 10px 0;
+}
+mark {
+  background: color-mix(in srgb, #ffd43b 45%, transparent);
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: 4px;
+}
+code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.term {
+  display: inline;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-bottom: 2px dotted var(--accent-line);
+  cursor: help;
+}
+.term:hover {
+  background: var(--accent-soft);
+  border-radius: 4px 4px 0 0;
+}
+
+/* ---------- Bewegung reduzieren ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
