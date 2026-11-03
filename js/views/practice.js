@@ -338,7 +338,7 @@
         card = LA.ui.flipCard(c.front, c.back, meta(c, LA.store.cardState(c._topic, c.id)));
         card.addEventListener('click', flip);
         // data-topic: Glossar-Popover schlagen [[Begriffe]] im Thema der Karte nach
-        stage.replaceChildren(h('div', { class: 'fc-session', dataset: { topic: c._topic } }, h('div', { class: 'game-status' }, `${Math.min(done + 1, total)} / ${total}`), LA.ui.editableCard(card, edit)));
+        stage.replaceChildren(h('div', { class: 'fc-session', dataset: { topic: c._topic } }, h('div', { class: 'game-status' }, `${Math.min(done + 1, total)} / ${total}`), LA.ui.swipeCard(LA.ui.editableCard(card, edit), { active: () => flipped, onSwipe: answer })));
         // Nach dem Bearbeiten bleibt eine umgedrehte Karte umgedreht
         if (keepFlipped && flipped) return card.classList.add('flipped', 'no-anim');
         flipped = false;

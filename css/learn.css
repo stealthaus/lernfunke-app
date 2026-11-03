@@ -1267,6 +1267,56 @@
 .flip.no-anim .flip-inner {
   transition: none;
 }
+/* Wischen (aufgedeckte Karte): rechts gewusst, links nochmal */
+.fc-card.swipeable {
+  touch-action: pan-y;
+  transform: translateX(var(--dx, 0)) rotate(var(--rot, 0));
+  transition: transform 0.25s ease;
+}
+.fc-card.dragging {
+  transition: none;
+}
+.player-stage:has(.swipeable) {
+  overflow-x: hidden;
+}
+.fc-card.flying {
+  transition: transform 0.22s ease-in;
+}
+.fc-stamp {
+  position: absolute;
+  top: -14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 3px solid currentColor;
+  border-radius: 12px;
+  background: var(--surface);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: var(--stamp, 0);
+  pointer-events: none;
+}
+.fc-stamp.good {
+  left: 18px;
+  color: var(--good);
+  transform: rotate(-12deg);
+}
+.fc-stamp.again {
+  right: 18px;
+  color: var(--warn);
+  transform: rotate(12deg);
+}
+.swipe-hint {
+  display: none;
+}
+@media (hover: none) {
+  .swipe-hint {
+    display: block;
+  }
+}
 .fc-actions {
   display: flex;
   justify-content: center;

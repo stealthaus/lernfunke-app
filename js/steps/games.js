@@ -10,7 +10,7 @@
     const card = h('button', { class: 'flip', type: 'button', 'aria-label': 'Karte umdrehen' },
       h('div', { class: 'flip-inner' },
         h('div', { class: 'flip-face flip-front' }, meta ? h('div', { class: 'flip-meta' }, meta) : null, h('div', { class: 'flip-text', html: LA.md(front) }), h('div', { class: 'flip-hint' }, 'Tippen zum Umdrehen')),
-        h('div', { class: 'flip-face flip-back' }, h('div', { class: 'flip-text', html: LA.md(back) }))));
+        h('div', { class: 'flip-face flip-back' }, h('div', { class: 'flip-text', html: LA.md(back) }), h('div', { class: 'flip-hint swipe-hint' }, '← Nochmal · Wischen · Gewusst →'))));
     return card;
   };
   /** Bereits aufgedeckte Karte wieder umdrehen (Vorder- ↔ Rückseite) */
@@ -24,6 +24,69 @@
   LA.ui.editableCard = (flip, onEdit) =>
     h('div', { class: 'fc-card' }, flip,
       h('button', { class: 'icon-btn sm fc-edit', type: 'button', title: 'Karte bearbeiten (E)', 'aria-label': 'Karte bearbeiten', onclick: onEdit }, LA.icon('pencil')));
+
+  /** Aufgedeckte Karte wie bei Tinder wegwischen: rechts = gewusst, links = nochmal.
+   *  Senkrechtes Wischen bleibt Scrollen, ein Tippen ohne Bewegung dreht die Karte weiterhin um. */
+  LA.ui.swipeCard = (el, { active, onSwipe }) => {
+    const stamp = h('div', { class: 'fc-stamp', 'aria-hidden': 'true' });
+    el.append(stamp);
+    el.classList.add('swipeable');
+    let start = null, dx = 0, dragging = false, moved = false;
+
+    function set(x) {
+      dx = x;
+      const p = Math.min(Math.abs(x) / 110, 1);
+      el.style.setProperty('--dx', x + 'px');
+      el.style.setProperty('--rot', x / 22 + 'deg');
+      el.style.setProperty('--stamp', p);
+      const ok = x > 0;
+      stamp.className = 'fc-stamp ' + (ok ? 'good' : 'again');
+      stamp.replaceChildren(LA.icon(ok ? 'check' : 'refresh'), ok ? 'Gewusst' : 'Nochmal');
+    }
+    function reset() {
+      el.classList.remove('dragging');
+      set(0);
+      el.style.setProperty('--stamp', 0);
+    }
+    el.addEventListener('pointerdown', (e) => {
+      if (!active() || e.button > 0 || e.target.closest('.fc-edit')) return;
+      start = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+      dragging = moved = false;
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!start) return;
+      const x = e.clientX - start.x, y = e.clientY - start.y;
+      if (!dragging) {
+        if (Math.abs(y) > 10 && Math.abs(y) > Math.abs(x)) return (start = null); // Scrollen
+        if (Math.abs(x) < 10) return;
+        dragging = moved = true;
+        el.classList.add('dragging');
+        el.setPointerCapture(e.pointerId);
+      }
+      set(x);
+    });
+    const end = (e) => {
+      if (!start) return;
+      const fast = Math.abs(dx) > 60 && Math.abs(dx) / (e.timeStamp - start.t) > 0.6;
+      start = null;
+      if (!dragging) return;
+      dragging = false;
+      if (e.type === 'pointercancel' || (Math.abs(dx) < 100 && !fast)) return reset();
+      // Hinausfliegen lassen, dann bewerten
+      const ok = dx > 0;
+      el.classList.remove('dragging');
+      el.classList.add('flying');
+      set((ok ? 1 : -1) * (window.innerWidth + el.offsetWidth));
+      setTimeout(() => el.isConnected && active() && onSwipe(ok), 220);
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    // Nach einem Wisch kein Klick, sonst dreht sich die Karte mit
+    el.addEventListener('click', (e) => {
+      if (moved) e.stopPropagation(), e.preventDefault(), (moved = false);
+    }, true);
+    return el;
+  };
 
   /* ---------- match: Paare finden (Begriff ↔ Erklärung) ---------- */
   LA.defineStep('match', {
@@ -179,7 +242,7 @@
         counter.textContent = `${total - queue.length + 1} / ${total} · ${missed.size ? missed.size + ' zum Wiederholen' : 'Los geht’s'}`;
         card = LA.ui.flipCard(c.front, c.back);
         card.addEventListener('click', () => flip());
-        stage.replaceChildren(LA.ui.editableCard(card, edit));
+        stage.replaceChildren(LA.ui.swipeCard(LA.ui.editableCard(card, edit), { active: () => flipped, onSwipe: answer }));
         if (keepFlipped && flipped) card.classList.add('flipped', 'no-anim');
         else {
           flipped = false;
