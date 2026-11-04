@@ -22,7 +22,7 @@
             h('button', { type: 'button', class: 'icon-btn sm', 'aria-label': 'Nach oben', onclick: () => move(li, -1) }, LA.icon('up')),
             h('button', { type: 'button', class: 'icon-btn sm', 'aria-label': 'Nach unten', onclick: () => move(li, 1) }, LA.icon('down'))));
         li._item = it;
-        li.addEventListener('pointerdown', (e) => startDrag(e, li));
+        li.addEventListener('pointerdown', (e) => onDown(e, li));
         list.appendChild(li);
       });
 
@@ -37,10 +37,37 @@
         LA.fx.sound.tap();
       }
 
+      // Während des Ziehens per Touch darf die Seite nicht scrollen. Der Listener hängt dauerhaft an der Liste,
+      // damit der Browser touchmove schon beim Aufsetzen als blockierbar kennt.
+      let dragging = false;
+      list.addEventListener('touchmove', (e) => dragging && e.cancelable && e.preventDefault(), { passive: false });
+      list.addEventListener('contextmenu', (e) => (dragging || list.querySelector('.pressing')) && e.preventDefault());
+
+      function onDown(e, li) {
+        if (locked || dragging || e.target.closest('button')) return;
+        if (e.pointerType === 'mouse') return e.button === 0 && startDrag(e, li);
+        if (e.target.closest('.grip')) return startDrag(e, li);
+        // Touch auf der Karte: kurz halten, dann ziehen – wer gleich wischt, scrollt die Seite
+        const sx = e.clientX, sy = e.clientY;
+        li.classList.add('pressing');
+        const timer = setTimeout(() => { stop(); startDrag(e, li); }, 180);
+        const onMove = (ev) => Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8 && stop();
+        function stop() {
+          clearTimeout(timer);
+          li.classList.remove('pressing');
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', stop);
+          window.removeEventListener('pointercancel', stop);
+        }
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+      }
+
       function startDrag(e, li) {
-        if (locked || e.target.closest('button')) return;
-        if (e.pointerType === 'mouse' ? e.button !== 0 : !e.target.closest('.grip')) return;
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
+        dragging = true;
+        if (e.pointerType !== 'mouse' && navigator.vibrate) navigator.vibrate(12);
         const rect = li.getBoundingClientRect();
         const offY = e.clientY - rect.top;
         const ph = h('li', { class: 'order-ph', style: { height: rect.height + 'px' } });
@@ -60,6 +87,7 @@
           window.removeEventListener('pointermove', onMove);
           window.removeEventListener('pointerup', onUp);
           window.removeEventListener('pointercancel', onUp);
+          dragging = false;
           li.removeAttribute('style');
           li.classList.remove('dragging');
           list.insertBefore(li, ph);

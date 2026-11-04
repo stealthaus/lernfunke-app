@@ -880,6 +880,12 @@
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.15s;
+}
+.order-item.pressing {
+  transform: scale(0.98);
+  border-color: var(--accent-line);
 }
 .order-item.bump {
   animation: pop 0.3s;
