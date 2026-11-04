@@ -974,27 +974,8 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 12px;
 }
-@media (max-width: 560px) {
-  .buckets {
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-    gap: 8px;
-  }
-  .bucket {
-    min-height: 110px;
-  }
-  .bucket-head {
-    padding: 6px 4px;
-    font-size: 0.85rem;
-  }
-  .bucket-items {
-    padding: 6px;
-  }
-  .bucket .chip {
-    width: 100%;
-    padding: 6px 8px;
-    font-size: 0.8rem;
-    border-radius: 10px;
-  }
+.cat-left {
+  display: none;
 }
 .bucket {
   display: flex;
@@ -1053,6 +1034,100 @@
   display: block;
   font-size: 0.75rem;
   color: var(--bad);
+}
+/* Handy: nur der nächste Begriff als Karte, Gruppen als große Tippziele direkt darunter */
+@media (max-width: 560px) {
+  .cat-pool {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+  .cat-pool > .chip ~ .chip {
+    display: none;
+  }
+  .step-categorize .chip {
+    touch-action: manipulation;
+  }
+  .cat-pool > .chip {
+    min-height: calc(4.2em + 28px); /* drei Zeilen: Gruppen springen nicht je nach Textlänge */
+    padding: 14px 16px;
+    font-size: 1.02rem;
+    text-align: center;
+  }
+  .cat-left {
+    display: block;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .cat-left:empty {
+    display: none;
+  }
+  .cat-pool.moving {
+    border-color: var(--accent-line);
+  }
+  /* Gruppen-Köpfe als feste Tippziele oben, Einsortiertes als Liste darunter –
+     so wandern die Ziele nicht, wenn sich Gruppen füllen */
+  .buckets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .buckets.n3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .bucket {
+    display: contents;
+  }
+  .bucket-head {
+    order: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 8px 6px;
+    border-radius: var(--radius);
+    border: 2px solid color-mix(in srgb, var(--bucket) 55%, transparent);
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--bucket) 40%, var(--border));
+    font-size: 0.9rem;
+    line-height: 1.25;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+  .bucket-head:active {
+    transform: translateY(2px);
+  }
+  .bucket.targetable .bucket-head {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .bucket-items {
+    order: 1;
+    grid-column: 1 / -1;
+    padding: 8px;
+    border-radius: var(--radius);
+    border: 2px solid color-mix(in srgb, var(--bucket) 35%, transparent);
+    background: color-mix(in srgb, var(--bucket) 7%, var(--surface));
+    cursor: pointer;
+  }
+  .bucket-items:empty {
+    display: none;
+  }
+  .bucket-items::before {
+    content: attr(data-name);
+    width: 100%;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--muted);
+  }
+  .bucket .chip {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 0.84rem;
+    border-radius: 10px;
+    box-shadow: none;
+  }
 }
 
 /* ---------- Paare finden ---------- */

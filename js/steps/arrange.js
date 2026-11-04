@@ -93,51 +93,85 @@
     },
   });
 
-  /* ---------- categorize: Begriffe in Gruppen sortieren ---------- */
+  /* ---------- categorize: Begriffe in Gruppen sortieren ----------
+   * Breit: alle Begriffe im Pool, Ziehen oder Tippen+Gruppe.
+   * Schmal (Handy): Pool zeigt nur den nächsten Begriff als Karte, Tippen auf eine Gruppe sortiert ihn ein –
+   * kein Ziehen, kein Scrollen zwischen Pool und Gruppen. Einsortierte Begriffe antippen = verschieben. */
+  const compact = () => window.matchMedia('(max-width: 560px)').matches;
+
   LA.defineStep('categorize', {
     mode: 'check',
     label: 'Zuordnen',
     render(step, ctx) {
       const all = LA.shuffle(step.categories.flatMap((c, ci) => c.items.map((text) => ({ text, cat: ci, at: null, el: null }))));
       const pool = h('div', { class: 'cat-pool' });
+      const left = h('div', { class: 'cat-left', 'aria-live': 'polite' });
       let selected = null;
       let locked = false;
+      let justDragged = false;
 
       const buckets = step.categories.map((c, ci) => {
-        const body = h('div', { class: 'bucket-items' });
-        const el = h('div', { class: 'bucket', style: { '--bucket': `var(--c${(ci % 6) + 1})` }, onclick: (e) => !e.target.closest('.chip') && place(ci) },
-          h('div', { class: 'bucket-head' }, c.icon ? c.icon + ' ' : '', c.name),
+        const label = (c.icon ? c.icon + '\u00a0' : '') + c.name;
+        const body = h('div', { class: 'bucket-items', 'data-name': label });
+        const el = h('div', { class: 'bucket', style: { '--bucket': `var(--c${(ci % 6) + 1})` }, onclick: (e) => !e.target.closest('.chip') && !justDragged && place(ci, selected || current()) },
+          h('div', { class: 'bucket-head' }, label),
           body);
         el._ci = ci;
         return { el, body };
       });
-      pool.addEventListener('click', (e) => !e.target.closest('.chip') && place(null));
+      pool.addEventListener('click', (e) => !e.target.closest('.chip') && !justDragged && place(null));
       pool._ci = null;
 
       all.forEach((it) => {
         it.el = h('button', { class: 'chip', type: 'button', html: LA.mdi(it.text) });
         it.el.addEventListener('pointerdown', (e) => startDrag(e, it));
+        it.el.addEventListener('click', () => {
+          if (locked || justDragged) return;
+          // Handy: Beim Verschieben zählt die Pool-Karte als „zurücklegen“-Ziel
+          if (compact() && selected && selected.at != null && it.at == null) return place(null);
+          select(it);
+        });
         pool.appendChild(it.el);
       });
+      pool.appendChild(left);
 
-      function select(it) {
-        selected = selected === it ? null : it;
+      // Auf dem Handy ist der oberste Begriff im Pool automatisch „dran“
+      function current() {
+        if (!compact()) return null;
+        const el = pool.querySelector('.chip');
+        return el ? all.find((x) => x.el === el) : null;
+      }
+
+      function update() {
+        const rest = all.filter((x) => x.at == null).length;
+        const moving = selected && selected.at != null;
+        left.textContent = moving ? 'Andere Gruppe wählen – oder hier zurücklegen'
+          : rest ? `Noch ${rest} · tippe auf die passende Gruppe` : '';
+        pool.classList.toggle('empty', rest === 0);
+        pool.classList.toggle('moving', !!moving);
+      }
+
+      const select = (it) => setSelected(selected === it ? null : it);
+      function setSelected(it) {
+        selected = it;
         all.forEach((x) => x.el.classList.toggle('selected', x === selected));
         document.querySelectorAll('.bucket, .cat-pool').forEach((b) => b.classList.toggle('targetable', !!selected));
+        update();
       }
 
       function place(ci, it = selected) {
         if (locked || !it) return;
         it.at = ci;
-        (ci == null ? pool : buckets[ci].body).appendChild(it.el);
-        select(null);
+        // Zurückgelegte Begriffe kommen nach vorn, damit sie auf dem Handy gleich wieder dran sind
+        ci == null ? pool.insertBefore(it.el, pool.firstChild) : buckets[ci].body.appendChild(it.el);
+        setSelected(null);
         LA.fx.sound.tap();
-        pool.classList.toggle('empty', all.every((x) => x.at != null));
         ctx.ready(all.every((x) => x.at != null));
       }
 
       function startDrag(e, it) {
         if (locked || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        if (e.pointerType !== 'mouse' && compact()) return; // Handy: tippen statt ziehen, Scrollen bleibt frei
         const sx = e.clientX, sy = e.clientY;
         let ghost = null;
         const onMove = (ev) => {
@@ -160,9 +194,13 @@
           window.removeEventListener('pointerup', onUp);
           window.removeEventListener('pointercancel', onUp);
           document.querySelectorAll('.over').forEach((b) => b.classList.remove('over'));
-          if (!ghost) return select(it); // war nur ein Tipp
+          if (!ghost) return; // nur ein Tipp – das erledigt der click-Handler
           ghost.remove();
           it.el.classList.remove('ghosted');
+          // Der folgende click (auf Gruppe oder Pool) darf nicht noch einmal einsortieren
+          justDragged = true;
+          setTimeout(() => (justDragged = false), 0);
+          if (ev.type === 'pointercancel') return;
           const over = document.elementFromPoint(ev.clientX, ev.clientY);
           const target = over && over.closest('.bucket, .cat-pool');
           if (target) place(target._ci, it);
@@ -172,13 +210,15 @@
         window.addEventListener('pointercancel', onUp);
       }
 
+      update();
       return {
         el: h('div', { class: 'step step-categorize' },
           LA.ui.stepHead(step, ctx, { kicker: 'Sortiere in die passende Gruppe', text: step.prompt }),
           pool,
-          h('div', { class: 'buckets', style: { '--n': step.categories.length } }, buckets.map((b) => b.el))),
+          h('div', { class: `buckets n${step.categories.length}`, style: { '--n': step.categories.length } }, buckets.map((b) => b.el))),
         check() {
           locked = true;
+          setSelected(null);
           let right = 0;
           all.forEach((it) => {
             const ok = it.at === it.cat;
