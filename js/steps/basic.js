@@ -87,6 +87,13 @@
         el: h('div', { class: 'step step-think' },
           LA.ui.stepHead(step, ctx, { kicker: 'Denk kurz nach', text: step.prompt }),
           hint, revealBtn, answer, rate),
+        // Rückblick: Auflösung zeigen, Bedienelemente ausblenden
+        review() {
+          answer.hidden = false;
+          revealBtn.remove();
+          if (hint) hint.remove();
+          if (!finished) rate.hidden = true;
+        },
         key(e) {
           if (e.key === ' ' && revealBtn.isConnected) {
             e.preventDefault();

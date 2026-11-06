@@ -75,6 +75,15 @@
 .fav-btn.pop {
   animation: pop 0.4s;
 }
+/* Schmale Bildschirme: Platz für den Fortschrittsbalken neben Zurück, Herz und XP */
+@media (max-width: 480px) {
+  .player-top {
+    gap: 6px;
+  }
+  .player-top .xp-unit {
+    display: none;
+  }
+}
 .player-stage {
   flex: 1;
   overflow-y: auto;
@@ -104,6 +113,27 @@
   color: var(--warn);
   font-weight: 800;
   font-size: 0.8rem;
+}
+/* Rückblick auf eine erledigte Aufgabe */
+.review-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.review-tag .ic {
+  width: 14px;
+  height: 14px;
+}
+.back-btn:disabled {
+  cursor: default;
 }
 .step-topic {
   display: inline-flex;
