@@ -67,7 +67,7 @@
     badges: {},
     topics: {},
   });
-  const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {} });
+  const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
   const normalize = (d) => {
     const base = fresh();
@@ -104,6 +104,7 @@
       favs: both(a.favs, b.favs, lww),
       cardEdits: both(a.cardEdits, b.cardEdits, lww),
       ownCards: both(a.ownCards, b.ownCards, lww),
+      labs: both(a.labs, b.labs, lww),
     };
   }
 
@@ -174,6 +175,7 @@
         favs: live(t.favs, st.favs),
         cardEdits: live(t.cardEdits),
         ownCards: Object.keys(own).sort().map((cid) => ({ id: cid, ...own[cid] })), // IDs enthalten die Uhrzeit
+        labs: live(t.labs, st.labs),
       };
     }
     const days = {};
@@ -225,6 +227,7 @@
       for (const k in o.favs || {}) t.favs[k] = r0(o.favs[k]);
       for (const k in o.cardEdits || {}) t.cardEdits[k] = r0(o.cardEdits[k]);
       (o.ownCards || []).forEach((c) => (t.ownCards[c.id] = r0({ front: c.front, back: c.back, at: c.at })));
+      for (const k in o.labs || {}) t.labs[k] = r0(o.labs[k]);
     }
     return d;
   }
@@ -253,7 +256,8 @@
     if (local && LA.sync) LA.sync.touched();
   }
 
-  const dt = (id) => doc.topics[id] || (doc.topics[id] = freshTopic());
+  // Fehlende Felder ergänzen: Themen-Einträge aus älteren App-Fassungen kennen z. B. `labs` noch nicht
+  const dt = (id) => (doc.topics[id] = { ...freshTopic(), ...doc.topics[id] });
 
   /* ---------- Level ---------- */
   // Level n → n+1 braucht 100 + 50·(n−1) XP
@@ -297,7 +301,7 @@
   /* ---------- Themen ---------- */
   /** Abgeleiteter Stand eines Themas (nur lesen) */
   function topic(id) {
-    return state.topics[id] || (state.topics[id] = { lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: [] });
+    return state.topics[id] || (state.topics[id] = { lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: [], labs: {} });
   }
 
   function visit(topicId) {
@@ -384,6 +388,34 @@
     if (LA.remote) return markStale(topicId, 'favs', gone);
     if (!gone.length) return;
     gone.forEach((qid) => (favs[qid] = reg(null)));
+    save();
+  }
+
+  /* ---------- Labs: Übungen am Rechner (Erklärkarten mit `lab: true`) ----------
+   * labs[labId] = { s: 'later' | 'done', at } – „Später machen“ landet auf der Lab-Liste,
+   * „Erledigt“ hakt ab. Schlüssel: LA.labId (Hash des Kartentitels). */
+  const labMap = (topicId) => (state.topics[topicId] || {}).labs || {};
+  const labState = (topicId, labId) => labMap(topicId)[labId] || null;
+
+  /** Gemerkte (noch offene) Labs eines Themas – ohne topicId über alle Themen */
+  const labCount = (topicId) =>
+    topicId
+      ? Object.values(labMap(topicId)).filter((x) => x.s === 'later').length
+      : Object.keys(state.topics).reduce((a, id) => a + labCount(id), 0);
+
+  /** Status setzen: 'later', 'done' oder null (zurück auf offen) */
+  function setLab(topicId, labId, s) {
+    dt(topicId).labs[labId] = reg(s ? { s, at: LA.today() } : null);
+    save();
+  }
+
+  /** Labs entfernen, deren Karte es nicht mehr gibt (Titel geändert oder gelöscht) */
+  function pruneLabs(topicId, validIds) {
+    const labs = (doc.topics[topicId] || {}).labs || {};
+    const gone = Object.keys(labs).filter((id) => labs[id].v != null && !validIds.has(id));
+    if (LA.remote) return markStale(topicId, 'labs', gone);
+    if (!gone.length) return;
+    gone.forEach((id) => (labs[id] = reg(null)));
     save();
   }
 
@@ -573,7 +605,7 @@
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
     levelInfo, streak, addXP, todayXP, topic, visit, lessonResult, best, testResult,
-    isFav, favCount, toggleFav, moveFav, pruneFavs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
+    isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     BADGES, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,

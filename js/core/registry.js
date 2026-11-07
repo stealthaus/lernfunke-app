@@ -84,6 +84,7 @@
     [...topic.lessons.flatMap((l) => l.steps), ...topic.exam].forEach((st) =>
       st._qid && [].concat(st.was || []).forEach((old) => LA.store.moveFav(topic.id, LA.questionId({ type: st.type, ...old }), st._qid)));
     LA.store.pruneFavs(topic.id, new Set(LA.favQuestionIds(topic)));
+    LA.store.pruneLabs(topic.id, new Set(LA.topicLabs(topic).map((x) => x.step._lab)));
     const ids = (cards) => new Set(cards.map((c) => c.id));
     LA.store.pruneCardEdits(topic.id, ids(LA.topicCards(topic, { hidden: true }).filter((c) => !c.own)));
     LA.store.pruneCards(topic.id, ids(LA.topicCards(topic, { hidden: true })));
@@ -105,9 +106,20 @@
   LA.questionId = (st) =>
     LA.hash(st.type + '|' + (st.question || st.statement || st.text || st.prompt || (st.pairs || []).map((p) => p[0]).join('|')));
 
-  // _topic: Herkunft (Reise-Tests mischen Themen) · _qid: Favoriten-Schlüssel
+  /** Stabile Lab-ID aus dem Kartentitel (Erklärkarten mit `lab: true`) */
+  LA.labId = (st) => LA.hash('lab|' + (st.title || st.body));
+
+  /** Alle Labs eines Themas in Lektionsreihenfolge: [{ lesson, step, index }] – index ab 1 (für ?schritt=) */
+  LA.topicLabs = (topic) =>
+    topic.lessons.flatMap((lesson) => lesson.steps.map((step, i) => ({ lesson, step, index: i + 1 })).filter((x) => x.step._lab));
+
+  // _topic: Herkunft (Reise-Tests mischen Themen) · _qid: Favoriten-Schlüssel · _lab: Schlüssel der Lab-Liste
   function normalize(t) {
-    const tag = (st, key) => ({ ...st, _key: key, _topic: t.id, _qid: FAVABLE.includes(st.type) ? LA.questionId(st) : undefined });
+    const tag = (st, key) => ({
+      ...st, _key: key, _topic: t.id,
+      _qid: FAVABLE.includes(st.type) ? LA.questionId(st) : undefined,
+      _lab: st.lab && st.type === 'explain' ? LA.labId(st) : undefined,
+    });
     t.glossary = t.glossary || [];
     t.lessons = (t.lessons || []).map((l, i) => {
       const lesson = { ...l, id: l.id || LA.slug(l.title) || 'lektion-' + (i + 1), index: i };

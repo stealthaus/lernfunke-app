@@ -1967,3 +1967,120 @@ button.back-link {
 .sync-status.is-offline {
   color: var(--warn);
 }
+
+/* ---------- Lab-Liste ---------- */
+.sc-lab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.lab-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.lab-hero h1 {
+  margin: 0;
+}
+.lab-hero p {
+  margin: 4px 0 0;
+  max-width: var(--measure);
+}
+.lab-hero-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 1.6rem;
+}
+.lab-filter {
+  margin-bottom: 20px;
+}
+.lab-group {
+  margin-bottom: 28px;
+}
+.lab-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+.lab-item {
+  padding: 0;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.lab-item > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.lab-item > summary::-webkit-details-marker {
+  display: none;
+}
+.lab-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.lab-title {
+  font-weight: 750;
+}
+.lab-where {
+  font-size: 0.86rem;
+}
+.lab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.lab-chip[hidden] {
+  display: none;
+}
+.lab-chip.is-later {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.lab-chip.is-done {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.lab-caret {
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.lab-item[open] .lab-caret {
+  transform: rotate(180deg);
+}
+.lab-body {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+/* Titel steht schon in der Zeile darüber */
+.lab-body .lab-kicker,
+.lab-body .step-explain > .step-title {
+  display: none;
+}
+.lab-open {
+  margin-top: 12px;
+}

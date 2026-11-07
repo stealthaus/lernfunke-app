@@ -108,6 +108,7 @@
     const nextIdx = progs.findIndex((p) => p.pct < 1);
     const pct = total ? done / total : 0;
     const favN = stations.reduce((a, t) => a + LA.store.favCount(t.id), 0);
+    const labN = stations.reduce((a, t) => a + LA.store.labCount(t.id), 0);
     const dueN = LA.store.dueCount(LA.seriesCardTopics(sr));
     const archived = isArchived(sr);
     const next = stations[nextIdx];
@@ -131,7 +132,8 @@
       next
         ? h('a', { class: 'sc-next', href: `#/t/${next.id}` }, `${progs[nextIdx].done ? 'Weiter' : 'Nächste Station'}: `, h('strong', null, `${nextIdx + 1}. ${next.title}`), icon('arrowRight'))
         : h('span', { class: 'sc-next' }, icon('check'), 'Alle Stationen geschafft'),
-      dueN ? h('a', { class: 'sc-count sc-due', href: `#/r/${sr.id}/karten`, title: 'Fällige Karteikarten' }, `${dueN} fällig`) : null);
+      dueN ? h('a', { class: 'sc-count sc-due', href: `#/r/${sr.id}/karten`, title: 'Fällige Karteikarten' }, `${dueN} fällig`) : null,
+      labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
     const head = h('div', { class: 'sc-head' },
       h('div', { class: 'sc-icon' }, sr.icon || '🧭'),
@@ -172,6 +174,7 @@
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/test` }, icon('target'), 'Reise-Test'),
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/karten`, title: dueN ? `${dueN} Karten fällig` : null }, icon('cards'), 'Karteikarten',
           dueN ? h('span', { class: 'sc-count sc-due' }, dueN) : null),
+        labN ? h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Übungen fürs Terminal' }, icon('laptop'), 'Labs', h('span', { class: 'sc-count' }, labN)) : null,
         favN
           ? h('a', { class: 'btn btn-soft sc-fav', href: `#/r/${sr.id}/test?nur=favoriten` }, icon('heart'), 'Favoriten-Test', h('span', { class: 'sc-count' }, favN))
           : h('span', { class: 'sc-hint muted' }, icon('heart'), 'Markiere Fragen mit dem Herz – dann kannst du sie hier gesammelt testen.'),

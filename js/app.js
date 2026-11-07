@@ -18,6 +18,9 @@
     [/^\/t\/([^/]+)\/nachlesen$/, 'reader', ['id']],
     [/^\/r\/([^/]+)\/test$/, 'seriesTest', ['seriesId']],
     [/^\/r\/([^/]+)\/karten$/, 'seriesCards', ['seriesId']],
+    [/^\/t\/([^/]+)\/labs$/, 'labs', ['id']],
+    [/^\/r\/([^/]+)\/labs$/, 'labs', ['seriesId']],
+    [/^\/labs$/, 'labs', []],
   ];
 
   const main = h('main', { id: 'main' });

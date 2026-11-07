@@ -66,6 +66,10 @@
           h('ul', null, topic.sources.map((s) => h('li', null, s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener' }, s.title) : s.title, s.note ? h('span', { class: 'muted' }, ' – ' + s.note) : null))))
       : null;
 
+    // Labs (Übungen am Rechner): Zahl im Knopf = gemerkte, noch offene
+    const labN = LA.topicLabs(topic).length;
+    const labLater = LA.store.labCount(id);
+
     // Lernreise: Position und Nachbar-Stationen
     const sr = LA.seriesOf(id);
     const seriesBar = sr
@@ -107,7 +111,10 @@
           action(`#/t/${id}/glossar`, 'list', 'Glossar', LA.plural(topic.glossary.length, 'Begriff', 'Begriffe'))),
         h('section', null,
           h('div', { class: 'section-head' }, h('h2', null, 'Lernpfad'),
-            prog.done ? h('a', { class: 'btn btn-ghost', href: `#/t/${id}/nachlesen`, title: 'Erklärungen geschaffter Lektionen ohne Quiz' }, icon('book'), 'Nachlesen') : null),
+            h('div', { class: 'btn-row' },
+              labN ? h('a', { class: 'btn btn-ghost', href: `#/t/${id}/labs`, title: 'Übungen fürs Terminal – merken und abhaken' }, icon('laptop'), 'Labs',
+                labLater ? h('span', { class: 'sc-count' }, labLater) : null) : null,
+              prog.done ? h('a', { class: 'btn btn-ghost', href: `#/t/${id}/nachlesen`, title: 'Erklärungen geschaffter Lektionen ohne Quiz' }, icon('book'), 'Nachlesen') : null)),
           path),
         sources),
     };

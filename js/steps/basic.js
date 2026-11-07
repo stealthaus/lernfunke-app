@@ -34,6 +34,45 @@
     return els;
   };
 
+  /* ---------- Labs: Übungen am Rechner ----------
+   * Erklärkarten mit `lab: true` bekommen ein Kennzeichen und zwei Umschalter. „Später machen“ setzt das Lab
+   * auf die Lab-Liste (für unterwegs am Handy), „Erledigt“ hakt es ab. Beide schließen sich gegenseitig aus. */
+  const LAB_NOTE = {
+    none: 'Gerade nicht am Rechner? Merk dir das Lab für später.',
+    later: 'Steht auf deiner Lab-Liste – du findest sie auf der Seite der Station und bei der Lernreise.',
+    done: 'Erledigt – schön, dass du es ausprobiert hast.',
+  };
+  LA.ui.labKicker = () => h('div', { class: 'lab-kicker' }, LA.icon('laptop'), 'Lab am Rechner');
+
+  LA.ui.labBar = (step, topicId) => {
+    const id = step._lab;
+    const note = h('p', { class: 'lab-note' });
+    const later = h('button', { class: 'btn btn-soft lab-btn lab-later', type: 'button' });
+    const done = h('button', { class: 'btn btn-soft lab-btn lab-done', type: 'button' });
+    const cur = () => (LA.store.labState(topicId, id) || {}).s || 'none';
+    function paint() {
+      const s = cur();
+      later.replaceChildren(LA.icon(s === 'later' ? 'check' : 'bookmark'), s === 'later' ? 'Gemerkt' : 'Später machen');
+      done.replaceChildren(LA.icon('check'), s === 'done' ? 'Erledigt' : 'Als erledigt abhaken');
+      later.setAttribute('aria-pressed', String(s === 'later'));
+      done.setAttribute('aria-pressed', String(s === 'done'));
+      later.classList.toggle('on', s === 'later');
+      done.classList.toggle('on', s === 'done');
+      note.textContent = LAB_NOTE[s];
+    }
+    function pick(s) {
+      const first = s === 'later' && !LA.store.labCount();
+      LA.store.setLab(topicId, id, cur() === s ? null : s);
+      paint();
+      LA.fx.sound.tap();
+      if (first) LA.fx.toast('Auf der Lab-Liste', 'Am Rechner findest du sie auf der Seite der Station oder bei der Lernreise unter „Labs“.');
+    }
+    later.addEventListener('click', () => pick('later'));
+    done.addEventListener('click', () => pick('done'));
+    paint();
+    return h('div', { class: 'lab-bar', role: 'group', 'aria-label': 'Lab merken oder abhaken' }, note, h('div', { class: 'btn-row' }, later, done));
+  };
+
   /* ---------- explain ---------- */
   LA.defineStep('explain', {
     mode: 'passive',
@@ -41,12 +80,14 @@
     render(step, ctx) {
       const fig = step.figure ? LA.renderFigure(step.figure, ctx.topic) : null;
       return {
-        el: h('div', { class: 'step step-explain' },
+        el: h('div', { class: 'step step-explain' + (step._lab ? ' is-lab' : '') },
+          step._lab ? LA.ui.labKicker() : null,
           step.title ? h('h2', { class: 'step-title', html: LA.mdi(step.title) }) : null,
           step.figureFirst ? fig : null,
           step.body ? h('div', { class: 'md', html: LA.md(step.body) }) : null,
           step.figureFirst ? null : fig,
-          LA.ui.callouts(step)),
+          LA.ui.callouts(step),
+          step._lab ? LA.ui.labBar(step, step._topic || ctx.topic.id) : null),
       };
     },
   });
