@@ -73,20 +73,24 @@
   margin-right: auto;
 }
 .brand-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 32px;
   height: 32px;
-  border-radius: 0;
-  background: var(--brand);
-  color: #fff;
+  flex: none;
 }
-.brand-mark .ic {
-  width: 20px;
-  height: 20px;
+.brand-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-.brand-mark svg path:first-child {
-  fill: #fff;
+.bm-bg {
+  fill: var(--logo-bg);
+}
+.bm-ink {
+  fill: var(--logo-ink);
+}
+.bm-arc {
+  fill: var(--brand);
 }
 .top-stats {
   display: flex;

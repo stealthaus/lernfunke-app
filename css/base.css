@@ -45,6 +45,8 @@
   --p4: #f6d3de;
   --p5: #ded7f4;
   --p6: #cbeaf0;
+  --logo-bg: #cdebd8;  /* Logo bleibt in beiden Modi gleich (wie Favicon und App-Icon) */
+  --logo-ink: #111111;
   --tint-mix: 20%; /* Anteil der Reise-/Themenfarbe an ihrer Pastellfläche */
   --ink-mix: 70%;  /* farbige Diagrammschrift: so viel Farbe, Rest Schwarz */
 

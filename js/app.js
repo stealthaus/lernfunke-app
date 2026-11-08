@@ -42,6 +42,13 @@
   media.addEventListener && media.addEventListener('change', applyTheme);
 
   /* ---------- Kopfzeile ---------- */
+  /** Logo wie Favicon und App-Icon: schwarzes L mit Viertelkreis in Signalrot auf Mint */
+  function brandMark() {
+    const el = h('span', { class: 'brand-mark', 'aria-hidden': 'true' });
+    el.innerHTML = '<svg viewBox="0 0 24 24"><rect class="bm-bg" width="24" height="24"/><path class="bm-arc" d="M8 17V7a10 10 0 0 1 10 10z"/>'
+      + '<rect class="bm-ink" x="4" y="3" width="4" height="18"/><rect class="bm-ink" x="4" y="17" width="16" height="4"/></svg>';
+    return el;
+  }
   const streakEl = h('span');
   const todayEl = h('span');
   const levelEl = h('span');
@@ -50,7 +57,7 @@
   const soundBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Töne an/aus', onclick: () => LA.store.setting('sound', !LA.store.setting('sound')) });
   const header = h('header', { class: 'topbar' },
     h('div', { class: 'topbar-inner' },
-      h('a', { class: 'brand', href: '#/' }, h('span', { class: 'brand-mark' }, icon('spark')), h('span', { class: 'brand-name' }, 'Lernfunke')),
+      h('a', { class: 'brand', href: '#/' }, brandMark(), h('span', { class: 'brand-name' }, 'Lernfunke')),
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
         h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge)' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, ringBox, todayEl),
