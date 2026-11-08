@@ -167,7 +167,7 @@
     .trim();
 
   /** o: { deck({ hidden }) → Karten, topics() → Themen für neue Karten,
-   *       back: { href, label, done }, accent, kicker?, intro?, multi?, tile?(), extra?(rerender) } */
+   *       back: { href, label, done }, kicker?, intro?, multi?, tile?(), extra?(rerender) } */
   function cardTrainer(o) {
     const root = h('div', { class: 'player-wrap' });
     let onKey = null;
@@ -422,7 +422,7 @@
     }
 
     overview();
-    return { el: root, accent: o.accent, focus: false, destroy: () => setKeys(null) };
+    return { el: root, focus: false, destroy: () => setKeys(null) };
   }
 
   /* ---------- Stapel eines Themas ---------- */
@@ -430,7 +430,6 @@
     const topic = await LA.loadTopic(id);
     const sr = LA.seriesOf(id);
     return cardTrainer({
-      accent: topic.color,
       back: { href: `#/t/${id}`, label: topic.title, done: 'Zum Thema' },
       deck: (opts) => LA.topicCards(topic, opts),
       topics: () => [topic],
@@ -455,7 +454,6 @@
       return topics.filter((t) => on.includes(t.id));
     };
     return cardTrainer({
-      accent: sr.color,
       kicker: `Lernreise · ${sr.title}`,
       intro: 'Alle Karten der Reise in einem Stapel, bunt gemischt. Die Fächer sind dieselben wie in den einzelnen Themen – was du hier wiederholst, zählt auch dort.',
       back: { href: '#/', label: 'Startseite', done: 'Zur Startseite' },
@@ -486,7 +484,7 @@
       const { boxes, due, fresh } = classify(cards);
       const box = h('input', { type: 'checkbox', checked: active, 'aria-label': `${t.title} einbeziehen` });
       box.addEventListener('change', () => pick(box.checked ? [...on, t.id] : [...on].filter((x) => x !== t.id)));
-      return h('label', { class: 'ds-row' + (active ? '' : ' off'), style: { '--accent': t.color || 'var(--brand)' } },
+      return h('label', { class: 'ds-row' + (active ? '' : ' off') },
         box,
         h('span', { class: 'ds-icon' }, t.icon || '📘'),
         h('span', { class: 'ds-title' }, h('span', { class: 'ds-num' }, `${i + 1}.`), ' ', t.title),
@@ -524,7 +522,6 @@
       blitz: t.games.blitz != null ? `Rekord: ${t.games.blitz} Punkte` : null,
     };
     return {
-      accent: topic.color,
       el: h('div', { class: 'page arcade' },
         h('a', { class: 'back-link', href: `#/t/${id}` }, icon('arrowLeft'), topic.title),
         h('h1', null, 'Spielhalle'),
@@ -594,7 +591,7 @@
       return player;
     };
     const wrap = h('div', { class: 'player-wrap' }, start().el);
-    return { el: wrap, focus: true, accent: topic.color, destroy: () => player && player.destroy() };
+    return { el: wrap, focus: true, destroy: () => player && player.destroy() };
   };
 
   /* ---------- Blitzrunde ---------- */
@@ -717,6 +714,6 @@
     }
 
     intro();
-    return { el: root, focus: true, accent: topic.color, destroy: cleanup };
+    return { el: root, focus: true, destroy: cleanup };
   }
 })();

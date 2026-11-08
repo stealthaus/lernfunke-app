@@ -262,7 +262,7 @@
       }
       // data-topic: Glossar-Popover schlagen [[Begriffe]] im Thema der Frage nach
       const card = h('div', { class: 'step-card' + (step._retry ? ' is-retry' : ''), dataset: { topic: stepTopic.id } },
-        opts.showTopic ? h('div', { class: 'step-topic', style: { '--accent': stepTopic.color } }, stepTopic.icon, ' ', stepTopic.title) : null,
+        opts.showTopic ? h('div', { class: 'step-topic' }, stepTopic.icon, ' ', stepTopic.title) : null,
         step._retry ? h('div', { class: 'retry-tag' }, icon('refresh'), 'Wiederholung') : null,
         inst.el);
       curCard = card;

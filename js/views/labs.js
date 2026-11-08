@@ -115,7 +115,7 @@
       const parts = groups.map((g) => {
         const labs = g.labs.map((x) => ({ ...x, topic: g.topic })).filter(show);
         if (!labs.length) return null;
-        return h('section', { class: 'lab-group', style: { '--accent': g.topic.color || 'var(--brand)' } },
+        return h('section', { class: 'lab-group' },
           single ? null : h('h2', { class: 'lab-group-head' }, h('span', { 'aria-hidden': 'true' }, g.topic.icon || '📘'), g.topic.title),
           labs.map(item));
       }).filter(Boolean);
@@ -145,7 +145,6 @@
     const scope = series ? series.title : single ? single.title : 'Alle Themen';
 
     return {
-      accent: single ? single.color : series ? series.color : null,
       el: h('div', { class: 'page lab-page' },
         back,
         h('div', { class: 'lab-hero' },

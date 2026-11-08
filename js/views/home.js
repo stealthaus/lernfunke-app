@@ -39,35 +39,35 @@
     return topic.lessons.find((l) => !(done[l.id] && done[l.id].done)) || null;
   };
 
-  function greeting() {
-    const hr = new Date().getHours();
-    if (hr < 5) return 'Nachtschicht? 🌙';
-    if (hr < 11) return 'Guten Morgen! ☀️';
-    if (hr < 18) return 'Hallo! 👋';
-    return 'Guten Abend! 🌆';
-  }
-
-  /** Kompakter Tagesstatus: Tagesziel, Serie, Level – eine Karte statt vier Kacheln (die Kopfzeile zeigt dieselben Zahlen) */
-  function todayCard() {
+  /** Kopf der Startseite im Fahrplan-Stil: Datum, XP von heute als große Zahl, darunter die Hauptaktion */
+  function hero(continueRow) {
     const st = LA.store.get();
     const lvl = LA.store.levelInfo();
     const streak = LA.store.streak();
     const todayXP = LA.store.todayXP();
     const reached = todayXP >= st.goal;
-    return h('a', { class: 'today-card', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP. Statistik und Abzeichen öffnen` },
-      LA.ui.ring(todayXP / st.goal, 64, 7, reached ? '✓' : Math.round((todayXP / st.goal) * 100) + '%'),
-      h('div', { class: 'td-body' },
-        h('div', { class: 'td-title' }, reached ? 'Tagesziel geschafft' : `Noch ${st.goal - todayXP} XP bis zum Tagesziel`),
-        h('div', { class: 'td-meta' },
-          h('span', { class: streak ? '' : 'dim' }, '🔥 ', streak ? LA.plural(streak, 'Tag', 'Tage') + ' in Folge' : 'Heute starten'),
-          h('span', null, `Level ${lvl.level} · ${lvl.into}/${lvl.need} XP`))),
-      h('span', { class: 'td-go' }, icon('arrowRight')));
+    const date = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+    return h('section', { class: 'home-hero' },
+      h('h1', { class: 'sr-only' }, 'Lernfunke – Startseite'),
+      h('div', { class: 'hh-line' },
+        h('span', null, date),
+        h('a', { href: '#/profil' }, `Level ${lvl.level}`)),
+      h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge. Statistik und Abzeichen öffnen` },
+        h('span', { class: 'hh-giant', 'aria-hidden': 'true' }, String(todayXP)),
+        h('span', { class: 'hh-legend', 'aria-hidden': 'true' },
+          h('span', { class: 'hh-unit' }, 'XP heute'),
+          h('span', null, reached ? '✓ Tagesziel geschafft' : `Ziel ${st.goal} · noch ${st.goal - todayXP}`),
+          h('span', null, streak ? `${LA.plural(streak, 'Tag', 'Tage')} in Folge` : 'Serie: heute starten'),
+          h('span', null, `${lvl.into} / ${lvl.need} XP bis Level ${lvl.level + 1}`))),
+      h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': 'Tagesziel', 'aria-valuenow': String(Math.min(todayXP, st.goal)), 'aria-valuemax': String(st.goal) },
+        h('div', { style: { width: Math.min(1, todayXP / st.goal) * 100 + '%' } })),
+      continueRow);
   }
 
   function topicCard(t) {
     const p = LA.topicProgress(t.id);
     const sr = LA.seriesOf(t.id);
-    return h('a', { class: 'topic-card', href: `#/t/${t.id}`, style: { '--accent': t.color || 'var(--brand)' } },
+    return h('a', { class: 'topic-card', href: `#/t/${t.id}` },
       h('div', { class: 'tc-band' },
         h('span', { class: 'tc-icon' }, t.icon || '📘'),
         p.pct === 1 ? h('span', { class: 'tc-done' }, icon('check'), 'Fertig') : null,
@@ -114,7 +114,7 @@
     const next = stations[nextIdx];
 
     const toggle = h('button', { class: 'icon-btn sc-toggle', type: 'button', 'aria-label': 'Stationen ein- und ausblenden' }, icon('down'));
-    const card = h('div', { class: 'series-card', style: { '--accent': sr.color || 'var(--brand)' } });
+    const card = h('div', { class: 'series-card' });
     const setState = (on) => {
       card.classList.toggle('open', on);
       toggle.setAttribute('aria-expanded', String(on));
@@ -136,13 +136,12 @@
       labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
     const head = h('div', { class: 'sc-head' },
-      h('div', { class: 'sc-icon' }, sr.icon || '🧭'),
       h('div', { class: 'sc-body' },
         h('div', { class: 'sc-kicker' }, icon('route'), `Lernreise · ${LA.plural(stations.length, 'Station', 'Stationen')}`, h('span', { class: 'sc-lessons' }, ` · ${LA.plural(total, 'Lektion', 'Lektionen')}`)),
         h('h3', null, sr.title),
         sr.subtitle ? h('p', { class: 'muted sc-sub' }, sr.subtitle) : null,
         peek),
-      LA.ui.ring(pct, 60, 7, Math.round(pct * 100) + '%'),
+      h('div', { class: 'sc-pct', 'aria-label': `${Math.round(pct * 100)} Prozent geschafft` }, String(Math.round(pct * 100)), h('span', null, '%')),
       toggle);
     // Klick auf die Kopfzeile klappt auf – außer auf Links darin
     head.addEventListener('click', (e) => !e.target.closest('a') && flip());
@@ -159,16 +158,17 @@
       h('ol', { class: 'sc-stations' }, stations.map((t, i) => {
         const p = progs[i];
         const state = p.pct === 1 ? ' done' : i === nextIdx ? ' next' : '';
-        return h('li', { class: 'sc-station' + state, style: { '--accent': t.color || 'var(--brand)' } },
+        return h('li', { class: 'sc-station' + state },
           h('a', { href: `#/t/${t.id}` },
-            h('span', { class: 'sc-num' }, p.pct === 1 ? icon('check') : String(i + 1)),
-            h('span', { class: 'sc-ticon' }, t.icon || '📘'),
+            h('span', { class: 'sc-num' }, String(i + 1).padStart(2, '0')),
             h('span', { class: 'sc-text' },
               h('span', { class: 'sc-title' }, t.title),
               h('span', { class: 'sc-meta' },
                 h('span', { class: 'mini-bar' }, h('div', { style: { width: p.pct * 100 + '%' } })),
-                `${p.done}/${p.count}`,
-                state === ' next' ? h('span', { class: 'sc-go' }, p.done ? 'Weiter' : 'Start', icon('arrowRight')) : null))));
+                `${p.done}/${p.count}`)),
+            h('span', { class: 'sc-state' },
+              p.pct === 1 ? h('span', { class: 'sc-done' }, icon('check'), h('span', { class: 'sr-only' }, 'fertig'))
+                : state === ' next' ? h('span', { class: 'sc-go' }, p.done ? 'Weiter' : 'Start', icon('arrowRight')) : null)));
       })),
       h('div', { class: 'sc-actions' },
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/test` }, icon('target'), 'Reise-Test'),
@@ -196,13 +196,12 @@
     if (last) {
       const next = LA.nextLesson(last);
       const started = !!st.lastTopic;
-      continueCard = h('a', { class: 'continue-card', href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}`, style: { '--accent': last.color } },
-        h('div', { class: 'cc-icon' }, last.icon),
-        h('div', { class: 'cc-body' },
-          h('div', { class: 'cc-kicker' }, started ? 'Weiterlernen' : 'Hier starten'),
-          h('div', { class: 'cc-title' }, next ? next.title : 'Alle Lektionen geschafft – Zeit für Wiederholung!'),
-          h('div', { class: 'cc-sub' }, last.title)),
-        h('div', { class: 'cc-go' }, icon('play')));
+      continueCard = h('a', { class: 'now-row', href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}` },
+        h('span', { class: 'nr-kicker' }, started ? 'Weiterlernen' : 'Hier starten'),
+        h('span', { class: 'nr-body' },
+          h('span', { class: 'nr-title' }, next ? next.title : 'Alle Lektionen geschafft – Zeit für Wiederholung!'),
+          h('span', { class: 'nr-sub' }, last.title)),
+        h('span', { class: 'nr-go' }, icon('arrowRight')));
     }
 
     // Lernreisen und Archiv: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
@@ -228,9 +227,7 @@
 
     return {
       el: h('div', { class: 'page home' },
-        h('section', { class: 'home-hero' },
-          h('h1', null, greeting()),
-          h('div', { class: 'home-top' }, continueCard, todayCard())),
+        hero(continueCard),
         seriesWrap,
         h('section', null,
           h('div', { class: 'section-head' },
@@ -331,15 +328,18 @@
       el: h('div', { class: 'page profile' },
         h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
         h('section', { class: 'profile-hero' },
-          LA.ui.ring(lvl.pct, 96, 9, lvl.level),
-          h('div', null,
-            h('h1', null, `Level ${lvl.level}`),
-            h('p', { class: 'muted' }, `${st.xp} XP gesamt · noch ${lvl.need - lvl.into} XP bis Level ${lvl.level + 1}`),
-            h('div', { class: 'profile-chips' },
-              h('span', { class: 'chip-stat' }, '🔥 ', LA.plural(LA.store.streak(), 'Tag', 'Tage'), ' Serie'),
-              h('span', { class: 'chip-stat' }, '📚 ', LA.plural(st.stats.lessons, 'Lektion', 'Lektionen')),
-              h('span', { class: 'chip-stat' }, '🃏 ', LA.plural(st.stats.reviews, 'Karte', 'Karten'), ' wiederholt'),
-              h('span', { class: 'chip-stat' }, '🎮 ', LA.plural(st.stats.games, 'Spiel', 'Spiele'))))),
+          h('h1', { class: 'sr-only' }, `Level ${lvl.level}`),
+          h('div', { class: 'hh-figure', 'aria-hidden': 'true' },
+            h('span', { class: 'hh-giant' }, String(lvl.level)),
+            h('span', { class: 'hh-legend' },
+              h('span', { class: 'hh-unit' }, 'Level'),
+              h('span', null, `${st.xp} XP gesamt`),
+              h('span', null, `noch ${lvl.need - lvl.into} XP bis Level ${lvl.level + 1}`))),
+          h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': `Level ${lvl.level}, Fortschritt zum nächsten Level`, 'aria-valuenow': String(lvl.into), 'aria-valuemax': String(lvl.need) },
+            h('div', { style: { width: lvl.pct * 100 + '%' } })),
+          h('dl', { class: 'profile-stats' },
+            [[LA.store.streak(), 'Tage Serie'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt'], [st.stats.games, 'Spiele']]
+              .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n)))))),
         h('section', { class: 'card' }, h('h2', null, 'Die letzten 14 Tage'), chart),
         h('section', null, h('h2', null, 'Abzeichen'), badges),
         h('section', { class: 'card settings' },

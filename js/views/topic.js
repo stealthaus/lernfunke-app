@@ -81,7 +81,6 @@
       : null;
 
     return {
-      accent: topic.color,
       el: h('div', { class: 'page topic-page' },
         h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
         seriesBar,
@@ -169,14 +168,14 @@
       return player;
     };
     const wrap = h('div', { class: 'player-wrap' }, start().el);
-    return { el: wrap, focus: true, accent: topic.color, destroy: () => player && player.destroy() };
+    return { el: wrap, focus: true, destroy: () => player && player.destroy() };
   };
 
   /* ---------- Tests ---------- */
 
   /** Eine Test-Runde: zieht bei jedem Start neu (Favoriten öfter), zeigt am Ende das Ergebnis.
    *  record(pct) speichert das Ergebnis und liefert { best, newBest } – oder fehlt (nichts speichern). */
-  function testRun({ topic, pool, size, accent, back, backLabel, showTopic, record, hint }) {
+  function testRun({ topic, pool, size, back, backLabel, showTopic, record, hint }) {
     let player;
     const start = () => {
       if (player) player.destroy();
@@ -211,7 +210,7 @@
       return player;
     };
     const wrap = h('div', { class: 'player-wrap' }, start().el);
-    return { el: wrap, focus: true, accent, destroy: () => player && player.destroy() };
+    return { el: wrap, focus: true, destroy: () => player && player.destroy() };
   }
 
   /* ---------- Abschlusstest eines Themas ---------- */
@@ -223,7 +222,6 @@
       topic,
       pool,
       size: Math.min(topic.testSize || 10, pool.length),
-      accent: topic.color,
       back: `#/t/${id}`,
       backLabel: 'Zur Übersicht',
       record(pct) {
@@ -250,7 +248,6 @@
 
     if (!pool.length) {
       return {
-        accent: sr.color,
         el: h('div', { class: 'page' },
           h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
           h('div', { class: 'card error-card' },
@@ -265,7 +262,6 @@
       topic: topics[0],
       pool,
       size: favOnly ? pool.length : Math.min(SERIES_TEST_SIZE, pool.length),
-      accent: sr.color,
       back: '#/',
       backLabel: 'Zur Startseite',
       showTopic: true,
@@ -289,7 +285,6 @@
     };
     render();
     return {
-      accent: topic.color,
       el: h('div', { class: 'page' },
         h('a', { class: 'back-link', href: `#/t/${id}` }, icon('arrowLeft'), topic.title),
         h('div', { class: 'section-head' }, h('h1', null, 'Glossar'),
@@ -365,7 +360,6 @@
     if (query.lektion && sections.has(query.lektion)) requestAnimationFrame(() => sections.get(query.lektion).scrollIntoView({ block: 'start' }));
 
     return {
-      accent: topic.color,
       el: h('div', { class: 'page reader-page' },
         h('a', { class: 'back-link', href: `#/t/${id}` }, icon('arrowLeft'), topic.title),
         h('h1', null, 'Nachlesen'),

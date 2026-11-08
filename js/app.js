@@ -52,7 +52,7 @@
     h('div', { class: 'topbar-inner' },
       h('a', { class: 'brand', href: '#/' }, h('span', { class: 'brand-mark' }, icon('spark')), h('span', { class: 'brand-name' }, 'Lernfunke')),
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
-        h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge)' }, h('span', { class: 'tstat-emoji' }, '🔥'), streakEl),
+        h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge)' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, ringBox, todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level' }, levelEl)),
       h('div', { class: 'top-actions' }, soundBtn, themeBtn,
@@ -108,7 +108,6 @@
     }
     current = view;
     LA.current = { topic: route && route.params.id ? LA.topics[route.params.id] || null : null };
-    setAccent(view.accent);
     LA.app.setFocus(!!view.focus);
     main.replaceChildren(view.el);
     window.scrollTo(0, 0);
@@ -125,12 +124,6 @@
           h('p', null, e.message),
           h('a', { class: 'btn btn-primary', href: '#/' }, 'Zur Startseite'))),
     };
-  }
-
-  function setAccent(color) {
-    const root = document.documentElement.style;
-    if (color) root.setProperty('--accent', color);
-    else root.removeProperty('--accent');
   }
 
   /* ---------- Glossar-Popover für [[Begriffe]] ---------- */
