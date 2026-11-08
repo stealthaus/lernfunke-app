@@ -201,8 +201,8 @@
               { label: 'XP', value: '+' + sum.xp },
             ],
             actions: [
-              { label: 'Neuer Test', primary: true, onClick: () => wrap.replaceChildren(start().el) },
-              { label: backLabel, href: back },
+              { label: backLabel, primary: true, href: back },
+              { label: 'Neuer Test', onClick: () => wrap.replaceChildren(start().el) },
             ],
           };
         },

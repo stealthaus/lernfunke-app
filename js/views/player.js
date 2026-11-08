@@ -346,6 +346,9 @@
       const r = opts.result(summary);
       resultEl = resultScreen(r, summary);
       stage.replaceChildren(resultEl);
+      // Hauptaktion ist der Default: fokussiert, Enter löst sie aus
+      const main = resultEl.querySelector('.result-actions .btn-primary');
+      if (main) main.focus({ preventScroll: true });
       LA.fx.sound.done();
       if (!r.noConfetti && (r.stars == null || r.stars >= 2)) setTimeout(() => LA.fx.confetti(), 250);
     }
@@ -383,6 +386,9 @@
         if (!primary.disabled && (state !== 'done' || review >= 0) && !e.repeat) {
           e.preventDefault();
           primary.click();
+        } else if (state === 'done' && review < 0 && !e.repeat && !e.target.closest('.result-actions')) {
+          const main = resultEl && resultEl.querySelector('.result-actions .btn-primary');
+          if (main) { e.preventDefault(); main.click(); }
         }
         return;
       }
