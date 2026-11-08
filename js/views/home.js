@@ -205,8 +205,19 @@
       const ids = sr ? sr.topics : LA.catalog.map((t) => t.id);
       return ids.find((id) => LA.catalogEntry(id) && LA.topicProgress(id).pct < 1) || ids[0];
     };
+    // Station fertig: weiter mit der nächsten offenen Station derselben Reise (sonst erste offene überhaupt)
+    const openAfter = (id) => {
+      const cur = LA.seriesOf(id);
+      const rest = cur ? cur.series.topics.slice(cur.index + 1) : [];
+      return rest.find((t) => LA.catalogEntry(t) && LA.topicProgress(t).pct < 1) || firstOpen();
+    };
     const lastId = st.lastTopic && LA.catalogEntry(st.lastTopic) ? st.lastTopic : firstOpen();
-    const last = lastId ? await LA.loadTopic(lastId).catch(() => null) : null;
+    let last = lastId ? await LA.loadTopic(lastId).catch(() => null) : null;
+    if (last && !LA.nextLesson(last)) {
+      const nextId = openAfter(last.id);
+      const nextTopic = nextId && nextId !== last.id ? await LA.loadTopic(nextId).catch(() => null) : null;
+      if (nextTopic && LA.nextLesson(nextTopic)) last = nextTopic;
+    }
     let continueCard = null;
     if (last) {
       const next = LA.nextLesson(last);
