@@ -37,6 +37,17 @@
   --c5: #5b3fc4;
   --c6: #0b7f99;
 
+  /* Pastell: nur als Fläche, Text und Linien darauf bleiben schwarz.
+     p1 Himmel · p2 Mint · p3 Aprikose · p4 Rosé · p5 Lavendel · p6 Aqua */
+  --p1: #d3e2f7;
+  --p2: #cdebd8;
+  --p3: #f9e0bd;
+  --p4: #f6d3de;
+  --p5: #ded7f4;
+  --p6: #cbeaf0;
+  --tint-mix: 20%; /* Anteil der Reise-/Themenfarbe an ihrer Pastellfläche */
+  --ink-mix: 70%;  /* farbige Diagrammschrift: so viel Farbe, Rest Schwarz */
+
   --radius: 0;
   --radius-sm: 0;
   --shadow-sm: none;
@@ -99,6 +110,14 @@
     --c4: #f07fa8;
     --c5: #a28bff;
     --c6: #3fc4dd;
+    --p1: color-mix(in srgb, var(--c1) 24%, var(--bg));
+    --p2: color-mix(in srgb, var(--c2) 24%, var(--bg));
+    --p3: color-mix(in srgb, var(--c3) 24%, var(--bg));
+    --p4: color-mix(in srgb, var(--c4) 24%, var(--bg));
+    --p5: color-mix(in srgb, var(--c5) 24%, var(--bg));
+    --p6: color-mix(in srgb, var(--c6) 24%, var(--bg));
+    --tint-mix: 22%;
+    --ink-mix: 100%;
   }
 }
 :root[data-theme="dark"] {
@@ -127,6 +146,14 @@
   --c4: #f07fa8;
   --c5: #a28bff;
   --c6: #3fc4dd;
+  --p1: color-mix(in srgb, var(--c1) 24%, var(--bg));
+  --p2: color-mix(in srgb, var(--c2) 24%, var(--bg));
+  --p3: color-mix(in srgb, var(--c3) 24%, var(--bg));
+  --p4: color-mix(in srgb, var(--c4) 24%, var(--bg));
+  --p5: color-mix(in srgb, var(--c5) 24%, var(--bg));
+  --p6: color-mix(in srgb, var(--c6) 24%, var(--bg));
+  --tint-mix: 22%;
+  --ink-mix: 100%;
 }
 
 /* Abgeleitete Akzentfarben – auch dort neu berechnen, wo --accent lokal gesetzt wird */

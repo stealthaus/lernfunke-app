@@ -84,7 +84,7 @@
       el: h('div', { class: 'page topic-page' },
         h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
         seriesBar,
-        h('section', { class: 'topic-hero' },
+        h('section', { class: 'topic-hero', style: { '--pastel': LA.pastelOf(id) } },
           h('div', { class: 'th-icon' }, topic.icon),
           h('div', { class: 'th-body' },
             h('h1', null, topic.title),

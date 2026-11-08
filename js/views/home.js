@@ -67,7 +67,7 @@
   function topicCard(t) {
     const p = LA.topicProgress(t.id);
     const sr = LA.seriesOf(t.id);
-    return h('a', { class: 'topic-card', href: `#/t/${t.id}` },
+    return h('a', { class: 'topic-card', href: `#/t/${t.id}`, style: { '--pastel': LA.pastelOf(t.id) } },
       h('div', { class: 'tc-band' },
         h('span', { class: 'tc-icon' }, t.icon || '📘'),
         p.pct === 1 ? h('span', { class: 'tc-done' }, icon('check'), 'Fertig') : null,
@@ -98,6 +98,20 @@
     LA.store.setting('seriesOpen', { ...(LA.store.setting('seriesOpen') || {}), [sr.id]: on });
   }
 
+  /** Stationen als Blockreihe: Mint füllt sich mit den Lektionen, fertige tragen ✓, die nächste hat eine rote Kante */
+  function stationStrip(stations, progs, nextIdx) {
+    const doneN = progs.filter((p) => p.pct === 1).length;
+    return h('ol', { class: 'sc-strip', 'aria-label': `${doneN} von ${stations.length} Stationen fertig` },
+      stations.map((t, i) => {
+        const p = progs[i];
+        const state = p.pct === 1 ? ' done' : i === nextIdx ? ' next' : p.done ? ' started' : '';
+        return h('li', { class: 'sc-block' + state },
+          h('a', { href: `#/t/${t.id}`, title: t.title, 'aria-label': `Station ${i + 1}: ${t.title}, ${p.done} von ${p.count} Lektionen` },
+            h('span', { class: 'sb-fill', style: { height: p.pct * 100 + '%' } }),
+            h('span', { class: 'sb-num' }, p.pct === 1 ? '✓' : String(i + 1).padStart(2, '0'))));
+      }));
+  }
+
   /** Lernreise: Themen als nummerierte Stationen, die nächste offene ist hervorgehoben.
    *  Zugeklappt bleibt nur die Kopfzeile mit der nächsten Station. onArchive: Reise wurde (ent)archiviert */
   function seriesCard(sr, onArchive) {
@@ -114,7 +128,7 @@
     const next = stations[nextIdx];
 
     const toggle = h('button', { class: 'icon-btn sc-toggle', type: 'button', 'aria-label': 'Stationen ein- und ausblenden' }, icon('down'));
-    const card = h('div', { class: 'series-card' });
+    const card = h('div', { class: 'series-card', style: { '--pastel': LA.seriesPastel(sr) } });
     const setState = (on) => {
       card.classList.toggle('open', on);
       toggle.setAttribute('aria-expanded', String(on));
@@ -142,7 +156,8 @@
         sr.subtitle ? h('p', { class: 'muted sc-sub' }, sr.subtitle) : null,
         peek),
       h('div', { class: 'sc-pct', 'aria-label': `${Math.round(pct * 100)} Prozent geschafft` }, String(Math.round(pct * 100)), h('span', null, '%')),
-      toggle);
+      toggle,
+      stationStrip(stations, progs, nextIdx));
     // Klick auf die Kopfzeile klappt auf – außer auf Links darin
     head.addEventListener('click', (e) => !e.target.closest('a') && flip());
 

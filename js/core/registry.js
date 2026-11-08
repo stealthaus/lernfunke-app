@@ -25,6 +25,17 @@
   };
 
   /** Lernreise eines Themas samt Position, Vorgänger und Nachfolger – oder null */
+  /** Pastellfläche (CSS-Wert): Lernreisen reihum aus der festen Palette, damit Nachbarn sich unterscheiden;
+   *  Themen ohne Reise mischen ihre eigene Farbe mit dem Hintergrund */
+  const PASTELS = [5, 3, 1, 4, 6]; // ohne Mint – das bedeutet in der Blockreihe „fertig“
+  LA.seriesPastel = (sr) => `var(--p${PASTELS[Math.max(0, LA.series.indexOf(sr)) % PASTELS.length]})`;
+  LA.pastelOf = (topicId) => {
+    const sr = LA.seriesOf(topicId);
+    if (sr) return LA.seriesPastel(sr.series);
+    const color = (LA.catalogEntry(topicId) || {}).color;
+    return color ? `color-mix(in srgb, ${color} var(--tint-mix), var(--bg))` : 'var(--surface-2)';
+  };
+
   LA.seriesOf = (topicId) => {
     for (const sr of LA.series) {
       const i = sr.topics.indexOf(topicId);

@@ -1660,12 +1660,21 @@ svg text {
 .s-c4 { stroke: var(--c4); }
 .s-c5 { stroke: var(--c5); }
 .s-c6 { stroke: var(--c6); }
-.f-soft1 { fill: color-mix(in srgb, var(--c1) 18%, var(--surface)); }
-.f-soft2 { fill: color-mix(in srgb, var(--c2) 18%, var(--surface)); }
-.f-soft3 { fill: color-mix(in srgb, var(--c3) 18%, var(--surface)); }
-.f-soft4 { fill: color-mix(in srgb, var(--c4) 18%, var(--surface)); }
-.f-soft5 { fill: color-mix(in srgb, var(--c5) 18%, var(--surface)); }
-.f-soft6 { fill: color-mix(in srgb, var(--c6) 18%, var(--surface)); }
+/* Schweizer Stil: Kästen in Pastell mit schwarzer Kontur, Linien und Tokens behalten ihre Farbe */
+.f-soft1 { fill: var(--p1); }
+.f-soft2 { fill: var(--p2); }
+.f-soft3 { fill: var(--p3); }
+.f-soft4 { fill: var(--p4); }
+.f-soft5 { fill: var(--p5); }
+.f-soft6 { fill: var(--p6); }
+[class*="f-soft"][class*="s-c"] { stroke: var(--text); }
+/* Farbige Beschriftung im Hellen abdunkeln – auf Pastell sonst unter 4,5 : 1 */
+text.f-c1 { fill: color-mix(in srgb, var(--c1) var(--ink-mix), black); }
+text.f-c2 { fill: color-mix(in srgb, var(--c2) var(--ink-mix), black); }
+text.f-c3 { fill: color-mix(in srgb, var(--c3) var(--ink-mix), black); }
+text.f-c4 { fill: color-mix(in srgb, var(--c4) var(--ink-mix), black); }
+text.f-c5 { fill: color-mix(in srgb, var(--c5) var(--ink-mix), black); }
+text.f-c6 { fill: color-mix(in srgb, var(--c6) var(--ink-mix), black); }
 .f-accent { fill: var(--accent-text); }
 .s-accent { stroke: var(--accent-text); }
 .f-soft-accent { fill: var(--accent-soft); }

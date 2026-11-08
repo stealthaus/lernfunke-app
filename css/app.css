@@ -327,8 +327,10 @@ a.topic-card:hover h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 32px;
-  margin-bottom: 8px;
+  min-height: 56px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+  background: var(--pastel);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -388,19 +390,68 @@ a.topic-card:hover h3 {
 .series-list {
   margin-bottom: 32px;
 }
-/* Lernreise als Fahrplan: Kopf mit Prozentzahl, Stationen als Tabellenzeilen */
+/* --pastel kommt inline aus LA.seriesPastel / LA.pastelOf (js/core/registry.js) */
+/* Lernreise als Fahrplan: Kopf mit Prozentzahl auf Pastell, Stationen als Tabellenzeilen */
 .series-card {
   border-top: 4px solid var(--rule);
-  padding: 12px 0 8px;
+  padding: 0 0 8px;
 }
 .series-card + .series-card {
   margin-top: 28px;
 }
 .sc-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px 16px;
   margin-bottom: 16px;
+  padding: 12px 14px 14px;
+  background: var(--pastel);
+}
+.sc-head .muted,
+.sc-next {
+  color: var(--text);
+}
+
+/* Stationen als Blockreihe: Mint füllt sich mit dem Fortschritt */
+.sc-strip {
+  flex: 1 0 100%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sc-block a {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 48px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  color: var(--text);
+  text-decoration: none;
+}
+.sc-block a:hover {
+  background: var(--surface-2);
+}
+.sb-fill {
+  position: absolute;
+  inset: auto 0 0;
+  background: var(--p2);
+}
+.sb-num {
+  position: relative;
+  padding-bottom: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.sc-block.next a {
+  border-bottom: 5px solid var(--accent-strong);
 }
 .sc-body {
   flex: 1;
@@ -611,7 +662,6 @@ a.sc-due {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--muted);
 }
 .series-bar {
   display: flex;
@@ -657,8 +707,12 @@ a.sc-due {
   display: flex;
   gap: 24px;
   align-items: flex-start;
-  padding: 16px 0 8px;
+  padding: 20px;
   border-top: 8px solid var(--rule);
+  background: var(--pastel);
+}
+.topic-hero .th-sub {
+  color: var(--text);
 }
 .th-icon {
   display: grid;
@@ -668,6 +722,7 @@ a.sc-due {
   flex: none;
   border-radius: 0;
   border: 1px solid var(--rule);
+  background: var(--bg);
   font-size: 3.4rem;
   filter: grayscale(1);
 }
@@ -701,7 +756,8 @@ a.sc-due {
   gap: 6px;
 }
 .th-meta .tag {
-  background: var(--surface-2);
+  background: var(--bg);
+  color: var(--text);
 }
 .th-progress {
   display: flex;
