@@ -367,6 +367,9 @@
             LA.ui.segmented([['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']], st.settings.theme, (v) => LA.app.setTheme(v))),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Töne'), h('div', { class: 'muted' }, 'Kurze Klänge bei richtigen und falschen Antworten.')),
             LA.ui.segmented([[true, 'An'], [false, 'Aus']], st.settings.sound, (v) => LA.store.setting('sound', v))),
+          h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Notizen'), h('div', { class: 'muted' },
+            `${LA.plural(LA.store.openNotes(), 'offene Notiz', 'offene Notizen')} – Kartenwünsche und Fragen, die Claude am Rechner abarbeitet.`)),
+            h('a', { class: 'btn btn-soft', href: '#/notizen' }, icon('note'), 'Ansehen')),
           syncRow.el,
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Daten'), h('div', { class: 'muted' }, synced
             ? 'Sichere deinen Fortschritt bei Bedarf als Datei. Importieren und Zurücksetzen gelten für alle verbundenen Geräte.'

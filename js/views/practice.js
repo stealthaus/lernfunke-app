@@ -8,6 +8,7 @@
     return h('div', { class: 'player-top' },
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Beenden', onclick: onExit }, icon('x')),
       h('div', { class: 'pbar' }, barFill),
+      LA.notes.button(),
       right || h('span'));
   }
 

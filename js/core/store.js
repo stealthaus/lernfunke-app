@@ -9,6 +9,7 @@
  *    sonst brächte das andere Gerät den Eintrag beim nächsten Abgleich zurück.
  *  · Bestwerte (Sterne, Rekorde, Blitzrunde) – Maximum bzw. Minimum; Abzeichen – frühestes Datum.
  *  · Epoche { id, t }: Zurücksetzen und Importieren beginnen eine neue; die neuere ersetzt alles.
+ *  · Notizen { [id]: { v, t } } – wie Einzelwerte; tools/notes.js liest und erledigt sie am Rechner.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
 (function () {
   'use strict';
@@ -66,6 +67,7 @@
     lastTopic: { v: null, t: 0 },
     badges: {},
     topics: {},
+    notes: {}, // Notiz-ID → { v: { kind, text, topic, where, hash, at, done? }, t }
   });
   const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
@@ -130,6 +132,7 @@
       lastTopic: lww(a.lastTopic, b.lastTopic),
       badges: both(a.badges, b.badges, minStr),
       topics: both(a.topics, b.topics, mergeTopic),
+      notes: both(a.notes, b.notes, lww),
     };
     pruneDays(d);
     return clone(d);
@@ -195,6 +198,8 @@
       },
       settings: { ...DEFAULT_SETTINGS, ...live(d.settings) },
       lastTopic: d.lastTopic.v,
+      // neueste zuerst
+      notes: Object.entries(live(d.notes)).map(([id, n]) => ({ id, ...n })).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)),
     };
   }
 
@@ -214,6 +219,7 @@
     for (const k in s.settings || {}) d.settings[k] = r0(s.settings[k]);
     d.lastTopic = r0(s.lastTopic || null);
     d.badges = { ...s.badges };
+    // Notizen gab es in v1 noch nicht – d.notes bleibt leer
     for (const id in s.topics || {}) {
       const o = s.topics[id];
       const t = (d.topics[id] = freshTopic());
@@ -515,6 +521,36 @@
     save();
   }
 
+  /* ---------- Notizen ----------
+   * Beim Lernen schnell notiert: kind 'card' (Begriff/Konzept für eine Karteikarte) oder 'question'
+   * (Frage als Freitext). Am Rechner arbeitet Claude sie mit tools/notes.js ab und setzt
+   * done = { at, res } – res ist die kurze Antwort bzw. was aus dem Kartenwunsch geworden ist. */
+  const notes = () => state.notes;
+  const openNotes = () => state.notes.filter((n) => !n.done).length;
+  const noteId = () => 'n-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  function addNote({ kind, text, topic = null, where = '', hash = '' }) {
+    const id = noteId();
+    doc.notes[id] = reg({ kind, text, topic, where, hash, at: new Date().toISOString() });
+    save();
+    return id;
+  }
+
+  /** Felder ändern (Text, Art) oder erledigen: patch.done = { at, res } bzw. null = wieder offen */
+  function updateNote(id, patch) {
+    const prev = state.notes.find((n) => n.id === id);
+    if (!prev) return;
+    const { id: _, ...rest } = { ...prev, ...patch };
+    if (!rest.done) delete rest.done;
+    doc.notes[id] = reg(rest);
+    save();
+  }
+
+  function deleteNote(id) {
+    doc.notes[id] = reg(null);
+    save();
+  }
+
   /* ---------- Abzeichen ---------- */
   const BADGES = [
     { id: 'first', emoji: '✨', title: 'Erster Funke', desc: 'Erste Lektion abgeschlossen', test: (s) => s.stats.lessons >= 1 },
@@ -607,6 +643,7 @@
     levelInfo, streak, addXP, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
+    notes, openNotes, addNote, updateNote, deleteNote,
     BADGES, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,
     doc: () => doc, applyDoc, merge, canon, device,

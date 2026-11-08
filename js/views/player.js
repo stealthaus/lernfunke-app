@@ -64,6 +64,7 @@
         bar,
         counter,
         favBtn,
+        LA.notes.button(),
         xpChip),
       stage, foot, live);
 

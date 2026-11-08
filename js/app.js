@@ -21,6 +21,7 @@
     [/^\/t\/([^/]+)\/labs$/, 'labs', ['id']],
     [/^\/r\/([^/]+)\/labs$/, 'labs', ['seriesId']],
     [/^\/labs$/, 'labs', []],
+    [/^\/notizen$/, 'notes', []],
   ];
 
   const main = h('main', { id: 'main' });
@@ -62,7 +63,7 @@
         h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge)' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, ringBox, todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level' }, levelEl)),
-      h('div', { class: 'top-actions' }, soundBtn, themeBtn,
+      h('div', { class: 'top-actions' }, soundBtn, themeBtn, LA.notes.button(),
         h('a', { class: 'icon-btn', href: '#/profil', 'aria-label': 'Profil & Einstellungen' }, icon('user')))));
 
   function updateHeader() {

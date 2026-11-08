@@ -2053,3 +2053,130 @@ button.back-link {
 .lab-open {
   margin-top: 12px;
 }
+
+/* ---------- Notizen ---------- */
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.note-form h3 {
+  margin: 0;
+}
+.note-form .segmented {
+  align-self: flex-start;
+}
+.note-form .modal-actions {
+  margin-top: 4px;
+}
+.note-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.note-top a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.note-where {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.86rem;
+}
+.note-where .ic {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+a.note-where {
+  color: var(--muted);
+  text-decoration: none;
+}
+a.note-where:hover span {
+  text-decoration: underline;
+}
+.note-intro {
+  max-width: var(--measure);
+}
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.note-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+.note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.note-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.note-kind .ic {
+  width: 16px;
+  height: 16px;
+}
+.note-date {
+  font-size: 0.82rem;
+}
+.note-text {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 1.05rem;
+  font-weight: 650;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-res {
+  padding: 10px 12px;
+  background: var(--good-bg);
+  max-width: var(--measure);
+}
+.note-res-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--good);
+}
+.note-res-head .ic {
+  width: 16px;
+  height: 16px;
+}
+.note-res .md > :first-child {
+  margin-top: 0;
+}
+.note-res .md > :last-child {
+  margin-bottom: 0;
+}
+.note-actions {
+  justify-content: space-between;
+}
+.note-item.is-done .note-text {
+  font-weight: 500;
+}
