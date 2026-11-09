@@ -2,11 +2,14 @@
  *
  *  · Karteikarte – Begriff oder Konzept, das auf eine Karte soll. Claude prüft, ob es schon eine gibt,
  *    und schlägt sonst eine vor.
- *  · Frage – Freitext. Claude antwortet kurz (Tabelle) und schreibt die Kurzantwort an die Notiz.
+ *  · Frage – Freitext. Claude antwortet kurz und schreibt die Kurzantwort an die Notiz.
  *
  * LA.notes.button()  Notiz-Knopf für Kopfzeile, Player und Kartenrunde
  * LA.notes.open()    Dialog; merkt sich die Stelle (Thema, Lektion, Schritt, sichtbare Überschrift)
- * #/notizen          Liste: offen / erledigt (?zeige=done)
+ *                    und übernimmt markierten Text als Zitat
+ * LA.notes.list()    Liste als Ebene über der aktuellen Ansicht – „Zurück“ landet wieder genau dort
+ *                    (eine laufende Lektion bleibt erhalten)
+ * #/notizen          Liste als eigene Seite: offen / erledigt (?zeige=done)
  *
  * Gespeichert über LA.store.addNote – damit synchronisiert wie der restliche Fortschritt.
  * Abgeholt und erledigt werden die Notizen mit tools/notes.js (Skill /notizen). */
@@ -22,6 +25,7 @@
       icon: 'cards',
       field: 'Begriff oder Konzept',
       placeholder: 'Was soll auf eine Karte?',
+      withQuote: 'Was genau soll aus dem Zitat auf die Karte?',
       hint: 'Claude prüft am Rechner, ob es dazu schon eine Karte gibt, und schlägt sonst eine vor.',
     },
     question: {
@@ -29,6 +33,7 @@
       icon: 'bulb',
       field: 'Deine Frage',
       placeholder: 'Was ist dir unklar?',
+      withQuote: 'Was ist dir an der Stelle unklar?',
       hint: 'Claude beantwortet die Frage am Rechner kurz – die Antwort steht danach auch hier unter Notizen.',
     },
   };
@@ -85,20 +90,62 @@
     return { topic: topic ? topic.id : null, where: parts.join(' · '), hash: link };
   }
 
+  /* ---------- Markierter Text ---------- */
+  // Auf dem iPhone hebt das Antippen des Notiz-Knopfs die Markierung oft schon auf, bevor der Dialog
+  // aufgeht. Darum merken wir uns die letzte Markierung und nehmen sie noch kurz nach dem Aufheben.
+  const QUOTE_MAX = 600;
+  const GRACE_MS = 2500;
+  let lastSel = { text: '', gone: 0 };
+
+  function liveSelection() {
+    const s = document.getSelection && document.getSelection();
+    if (!s || s.isCollapsed || !s.rangeCount) return '';
+    const node = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement);
+    if (!node || !node.closest('#main') || node.closest('input, textarea, .note-sheet')) return '';
+    return s.toString();
+  }
+
+  document.addEventListener('selectionchange', () => {
+    const t = liveSelection();
+    if (t.trim()) lastSel = { text: t, gone: 0 };
+    else if (lastSel.text && !lastSel.gone) lastSel.gone = Date.now();
+  });
+
+  function takeQuote() {
+    let t = liveSelection();
+    if (!t.trim() && lastSel.gone && Date.now() - lastSel.gone < GRACE_MS) t = lastSel.text;
+    lastSel = { text: '', gone: 0 };
+    t = t.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+    return t.length > QUOTE_MAX ? t.slice(0, QUOTE_MAX - 1) + '…' : t;
+  }
+
   /* ---------- Dialog ---------- */
   function open() {
     if (document.querySelector('.note-dialog')) return;
     const ctx = context();
+    let quote = takeQuote();
     let kind = lastKind;
     const label = h('label', { class: 'ce-label', for: 'note-text' });
     const text = h('textarea', { class: 'ce-input', id: 'note-text', rows: 4, autocapitalize: 'sentences' });
     const hint = h('p', { class: 'ce-hint' });
     const error = h('p', { class: 'sync-error', role: 'alert', hidden: true }, 'Schreib kurz auf, worum es geht.');
     const paint = () => {
-      label.textContent = KINDS[kind].field;
-      text.placeholder = KINDS[kind].placeholder;
+      label.textContent = KINDS[kind].field + (quote ? ' (optional)' : '');
+      text.placeholder = quote ? KINDS[kind].withQuote : KINDS[kind].placeholder;
       hint.textContent = KINDS[kind].hint;
     };
+    const quoteBox = quote
+      ? h('figure', { class: 'note-quote' },
+          h('figcaption', { class: 'note-quote-head' },
+            h('span', null, 'Markierter Text'),
+            h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Zitat entfernen', title: 'Zitat entfernen', onclick: () => {
+              quote = '';
+              quoteBox.remove();
+              paint();
+              text.focus();
+            } }, icon('x'))),
+          h('blockquote', null, quote))
+      : null;
     const seg = LA.ui.segmented(Object.keys(KINDS).map((k) => [k, KINDS[k].label]), kind, (v) => {
       kind = v;
       paint();
@@ -120,9 +167,10 @@
     };
 
     const form = h('form', { class: 'note-form' },
-      h('div', { class: 'note-top' }, h('h3', null, 'Notiz'), h('a', { href: '#/notizen', onclick: () => close() }, 'Alle Notizen')),
+      h('div', { class: 'note-top' }, h('h3', null, 'Notiz'), h('button', { class: 'link-btn', type: 'button', onclick: () => (close(), list()) }, 'Alle Notizen')),
       seg,
       ctx.where ? h('p', { class: 'note-where muted' }, icon('bookmark'), h('span', null, ctx.where)) : null,
+      quoteBox,
       h('div', { class: 'ce-field' }, label, text, hint),
       error,
       h('div', { class: 'modal-actions' },
@@ -131,12 +179,12 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const value = text.value.trim();
-      if (!value) {
+      if (!value && !quote) {
         error.hidden = false;
         return text.focus();
       }
       lastKind = kind;
-      LA.store.addNote({ kind, text: value, ...ctx });
+      LA.store.addNote({ kind, text: value, quote, ...ctx });
       close();
       LA.fx.sound.tap();
       const n = LA.store.openNotes();
@@ -159,8 +207,8 @@
     return isNaN(d) ? '' : d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   };
 
-  LA.views.notes = async ({ query }) => {
-    let filter = query.zeige === 'done' ? 'done' : 'open';
+  /** Inhalt der Liste – für die Seite #/notizen und die Ebene LA.notes.list() */
+  function panel({ filter = 'open', back }) {
     const list = h('div', { class: 'note-list' });
     const empty = h('p', { class: 'muted lab-empty' });
     const tabs = h('div', { class: 'segmented lab-filter', role: 'group', 'aria-label': 'Notizen filtern' });
@@ -186,7 +234,8 @@
         h('div', { class: 'note-head' },
           h('span', { class: 'note-kind' }, icon(k.icon), k.label),
           h('span', { class: 'muted note-date' }, fmt(n.at))),
-        h('p', { class: 'note-text' }, n.text),
+        n.quote ? h('blockquote', { class: 'note-quote-text' }, n.quote) : null,
+        n.text ? h('p', { class: 'note-text' }, n.text) : null,
         n.where || cat
           ? h('a', { class: 'note-where muted', href: n.hash || (cat ? `#/t/${n.topic}` : '#/') }, icon('bookmark'), h('span', null, n.where || cat.title))
           : null,
@@ -224,7 +273,7 @@
 
     return {
       el: h('div', { class: 'page note-page' },
-        h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
+        back,
         h('div', { class: 'section-head' }, h('h1', null, 'Notizen'),
           h('button', { class: 'btn btn-primary', type: 'button', onclick: open }, icon('plus'), 'Neue Notiz')),
         h('p', { class: 'muted note-intro' }, 'Kartenwünsche und Fragen, die du beim Lernen festgehalten hast. Am Rechner in Claude Code ', h('code', null, '/notizen'), ' aufrufen: Claude beantwortet die Fragen kurz, prüft die Kartenwünsche gegen die vorhandenen Karten und hakt alles hier ab.'),
@@ -234,7 +283,43 @@
         clearBtn),
       destroy: off,
     };
-  };
+  }
 
-  LA.notes = { open, button, context };
+  LA.views.notes = async ({ query }) =>
+    panel({
+      filter: query.zeige === 'done' ? 'done' : 'open',
+      back: h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
+    });
+
+  /** Liste als Ebene: Die Ansicht darunter (z. B. eine laufende Lektion) bleibt, wie sie ist. */
+  function list() {
+    if (document.querySelector('.note-sheet')) return;
+    const inLesson = /^#\/t\/[^/]+\/l\//.test(location.hash) || !!document.querySelector('#main .player');
+    const close = () => {
+      sheet.remove();
+      p.destroy();
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('hashchange', close);
+      if (opener && opener.isConnected) opener.focus();
+    };
+    // Tasten nicht an den Player darunter durchreichen (Enter würde sonst „Weiter“ drücken)
+    const onKey = (e) => {
+      if (document.querySelector('.note-dialog, .modal-overlay:not(.note-sheet)')) return;
+      e.stopPropagation();
+      if (e.key === 'Escape') close();
+    };
+    const opener = document.activeElement;
+    const p = panel({
+      back: h('button', { class: 'back-link link-btn', type: 'button', onclick: () => close() }, icon('arrowLeft'), inLesson ? 'Zurück zur Lektion' : 'Zurück'),
+    });
+    const sheet = h('div', { class: 'note-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Notizen' }, p.el);
+    document.body.appendChild(sheet);
+    document.addEventListener('keydown', onKey, true);
+    // Ein Link in der Liste (Stelle einer Notiz) navigiert – dann Ebene schließen
+    window.addEventListener('hashchange', close);
+    const first = sheet.querySelector('.back-link');
+    if (first) first.focus();
+  }
+
+  LA.notes = { open, list, button, context };
 })();

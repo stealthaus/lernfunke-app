@@ -67,7 +67,7 @@
     lastTopic: { v: null, t: 0 },
     badges: {},
     topics: {},
-    notes: {}, // Notiz-ID → { v: { kind, text, topic, where, hash, at, done? }, t }
+    notes: {}, // Notiz-ID → { v: { kind, text, quote?, topic, where, hash, at, done? }, t }
   });
   const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
@@ -529,9 +529,10 @@
   const openNotes = () => state.notes.filter((n) => !n.done).length;
   const noteId = () => 'n-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-  function addNote({ kind, text, topic = null, where = '', hash = '' }) {
+  /** quote = beim Lernen markierter Text (optional) */
+  function addNote({ kind, text, quote = '', topic = null, where = '', hash = '' }) {
     const id = noteId();
-    doc.notes[id] = reg({ kind, text, topic, where, hash, at: new Date().toISOString() });
+    doc.notes[id] = reg({ kind, text, ...(quote ? { quote } : {}), topic, where, hash, at: new Date().toISOString() });
     save();
     return id;
   }
