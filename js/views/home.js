@@ -197,10 +197,10 @@
     return card;
   }
 
-  /** Reihenfolge nach Fortschritt: begonnene zuerst (weiteste oben), dann neue, fertige zuletzt.
-   *  Gleichstand behält die Reihenfolge aus dem Katalog. progress(x) → { done, pct } */
+  /** Reihenfolge nach Fortschritt: begonnene zuerst (weiteste oben), dann fertige – die bleiben wegen
+   *  der Karteikarten in Gebrauch –, neue zuletzt. Gleichstand behält die Katalog-Reihenfolge. progress(x) → { done, pct } */
   LA.byProgress = (list, progress) => {
-    const rank = (p) => (p.pct >= 1 ? 2 : p.done > 0 ? 0 : 1);
+    const rank = (p) => (p.pct >= 1 ? 1 : p.done > 0 ? 0 : 2);
     return list
       .map((x, i) => ({ x, i, p: progress(x) }))
       .sort((a, b) => rank(a.p) - rank(b.p) || (rank(a.p) === 0 ? b.p.pct - a.p.pct : 0) || a.i - b.i)
