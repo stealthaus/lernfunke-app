@@ -1,6 +1,7 @@
 /* Katalog, Themen-Lader und Registries für Schritt- und Grafiktypen.
  *
  * topics/catalog.js   → LA.registerCatalog([...])  (Metadaten aller Themen, klein)
+ * topics/meta.js      → LA.registerMeta({...})     (erzeugt: Lektionen und Datei-Hashes, für schnellen Start)
  * topics/<id>/topic.js → LA.registerTopic({...})   (Inhalt, wird erst bei Bedarf geladen) */
 (function () {
   'use strict';
@@ -17,6 +18,27 @@
   };
 
   LA.catalogEntry = (id) => LA.catalog.find((t) => t.id === id);
+
+  /** Erzeugte Metadaten (tools/meta.js): { catalog: hash, topics: { id: { h: hash, l: [[lessonId, titel], …] } } } */
+  LA.meta = { catalog: null, topics: {} };
+  LA.registerMeta = (m) => {
+    LA.meta = m && m.topics ? m : { catalog: null, topics: {} };
+  };
+
+  /** Lektionen eines Themas als [{ id, title }] – aus dem geladenen Inhalt oder aus topics/meta.js.
+   *  null, wenn beides fehlt (dann muss das Thema geladen werden). */
+  LA.lessonsOf = (id) => {
+    if (LA.topics[id]) return LA.topics[id].lessons;
+    const m = LA.meta.topics[id];
+    return m ? m.l.map(([lid, title]) => ({ id: lid, title })) : null;
+  };
+
+  /** Nächste offene Lektion eines Themas, ohne den Inhalt zu laden: { id, title } oder null */
+  LA.nextLessonOf = (id) => {
+    const lessons = LA.lessonsOf(id) || [];
+    const done = (LA.store.get().topics[id] || {}).lessons || {};
+    return lessons.find((l) => !(done[l.id] && done[l.id].done)) || null;
+  };
 
   /** Lernreisen: geordnete Folgen von Themen (topics/catalog.js → LA.registerSeries([...])) */
   LA.series = [];
@@ -73,8 +95,9 @@
       reject(new Error(`Datei ${path} konnte nicht geladen werden`));
     };
     if (LA.remote) {
-      // Online-Fassung: Inhalt über die GitHub-API aus dem privaten Repo (js/core/sync.js)
-      LA.sync.fetchText(path).then((src) => {
+      // Online-Fassung: Inhalt über die GitHub-API aus dem privaten Repo – aus dem Cache, solange der Hash
+      // in topics/meta.js passt (js/core/sync.js)
+      LA.sync.cachedText(path, (LA.meta.topics[id] || {}).h).then((src) => {
         LA.sync.run(src, path);
         if (pending[id]) fail(); // Skript lief, hat sich aber nicht registriert
       }, fail);
@@ -262,10 +285,10 @@
     return topic.glossary.find((g) => g.term.toLowerCase() === key || (g.aliases || []).some((a) => a.toLowerCase() === key));
   };
 
-  /** Fortschritt eines Themas in Prozent – geht auch ohne geladenen Inhalt über catalog.lessonCount */
+  /** Fortschritt eines Themas in Prozent – geht auch ohne geladenen Inhalt (topics/meta.js, sonst catalog.lessonCount) */
   LA.topicProgress = (id) => {
-    const t = LA.topics[id];
-    const count = t ? t.lessons.length : (LA.catalogEntry(id) || {}).lessonCount || 0;
+    const lessons = LA.lessonsOf(id);
+    const count = lessons ? lessons.length : (LA.catalogEntry(id) || {}).lessonCount || 0;
     const done = Object.values((LA.store.get().topics[id] || {}).lessons || {}).filter((l) => l.done).length;
     return { done: Math.min(done, count), count, pct: count ? Math.min(1, done / count) : 0 };
   };

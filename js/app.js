@@ -92,7 +92,10 @@
     return null;
   }
 
-  async function render() {
+  /** opts.keepScroll: dieselbe Ansicht mit neuem Stand – ohne Ladekreisel und ohne nach oben zu springen */
+  async function render(opts) {
+    const keep = !!(opts && opts.keepScroll);
+    const y = window.scrollY;
     const my = ++token;
     const [path, qs] = location.hash.replace(/^#/, '').split('?');
     const route = match(path);
@@ -100,7 +103,7 @@
     closePopover();
     if (current && current.destroy) current.destroy();
     current = null;
-    main.replaceChildren(h('div', { class: 'loading' }, h('div', { class: 'spinner' })));
+    if (!keep) main.replaceChildren(h('div', { class: 'loading' }, h('div', { class: 'spinner' })));
 
     let view;
     try {
@@ -118,7 +121,7 @@
     LA.current = { topic: route && route.params.id ? LA.topics[route.params.id] || null : null };
     LA.app.setFocus(!!view.focus);
     main.replaceChildren(view.el);
-    window.scrollTo(0, 0);
+    window.scrollTo(0, keep ? y : 0);
     const topic = LA.current.topic;
     document.title = topic ? `${topic.title} · Lernfunke` : 'Lernfunke';
   }
@@ -202,7 +205,7 @@
     main.replaceChildren(h('div', { class: 'loading' }, h('div', { class: 'spinner' })));
     LA.sync.ready().then((blocker) => {
       if (blocker) return main.replaceChildren(blocker.el);
-      window.addEventListener('hashchange', render);
+      window.addEventListener('hashchange', () => render());
       render();
     });
   }

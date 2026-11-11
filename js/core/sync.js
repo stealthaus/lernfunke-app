@@ -6,7 +6,12 @@
  *    LA.remote ist true, Katalog und Themen kommen mit dem Token über die GitHub-API aus dem privaten Repo.
  * Der Fortschritt liegt als progress.json auf dem Branch `fortschritt` (jeder Sync ist ein Commit –
  * so bleibt main sauber). Zusammengeführt wird mit LA.store.merge, deshalb geht nichts verloren.
- * Token und Repo stehen nur im localStorage des jeweiligen Browsers. */
+ * Token und Repo stehen nur im localStorage des jeweiligen Browsers.
+ *
+ * Schneller Start: Nichts wartet auf den Fortschritts-Abgleich – die App zeichnet sofort mit dem lokalen
+ * Stand und zeichnet die Ansicht neu, falls vom anderen Gerät etwas kommt. Online liegen Katalog, Metadaten
+ * und Themen im Cache des Browsers (Cache API); Themen gelten, solange ihr Hash in topics/meta.js passt.
+ * Beim Start zeichnet die App aus dem Cache und prüft im Hintergrund, ob es Neues gibt. */
 (function () {
   'use strict';
   const LA = window.LA;
@@ -61,8 +66,38 @@
     return e.message;
   }
 
-  /* ---------- Inhalte (nur online) ---------- */
+   /* ---------- Inhalte (nur online) ---------- */
   const fetchText = (path) => gh('/contents/' + path, { raw: true });
+
+  /* Cache für Inhalte: Schlüssel = Pfad + Hash. Ohne Cache API (oder wenn sie scheitert) einfach immer laden. */
+  const CACHE = 'lernfunke-inhalte';
+  const cacheKey = (path, hash) => new URL('__inhalt/' + path + '?h=' + (hash || 'neu'), location.href).href;
+  async function cacheGet(path, hash) {
+    try {
+      const res = await (await caches.open(CACHE)).match(cacheKey(path, hash));
+      return res ? await res.text() : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  /** Speichern und ältere Fassungen derselben Datei entfernen */
+  async function cachePut(path, hash, text) {
+    try {
+      const c = await caches.open(CACHE);
+      const key = cacheKey(path, hash);
+      const base = key.split('?')[0];
+      await Promise.all((await c.keys()).filter((r) => r.url.split('?')[0] === base && r.url !== key).map((r) => c.delete(r)));
+      await c.put(key, new Response(text, { headers: { 'Content-Type': 'text/javascript; charset=utf-8' } }));
+    } catch (e) {}
+  }
+  /** Datei mit bekanntem Hash: aus dem Cache, sonst laden und ablegen */
+  async function cachedText(path, hash) {
+    const hit = hash && (await cacheGet(path, hash));
+    if (hit != null) return hit;
+    const text = await fetchText(path);
+    if (hash) cachePut(path, hash, text);
+    return text;
+  }
 
   /** Quelltext wie eine <script>-Datei im globalen Scope ausführen */
   function run(src, name) {
@@ -168,10 +203,11 @@
     return queue;
   }
 
-  /** Neues vom anderen Gerät zeigen – aber nie mitten in einer Lektion oder Kartenrunde */
+  /** Neues vom anderen Gerät zeigen – aber nie mitten in einer Lektion oder Kartenrunde.
+   *  Scrollposition bleibt, damit die Seite nicht unter dem Finger springt. */
   function refreshView() {
     if (!booted || document.body.classList.contains('focus-mode')) return;
-    if (/^#?\/?(profil|themen|t\/[^/]+)?$/.test(location.hash) && LA.router) LA.router.refresh();
+    if (/^#?\/?(profil|themen|t\/[^/]+)?$/.test(location.hash) && LA.router) LA.router.refresh({ keepScroll: true });
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -181,7 +217,6 @@
   window.addEventListener('pagehide', () => sync({ ifDirty: true }));
   window.addEventListener('online', () => sync({ ifDirty: true }));
 
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /* ---------- Verbinden ---------- */
   function connectForm(onDone) {
@@ -265,20 +300,64 @@
         h('button', { class: 'btn btn-primary', type: 'button', onclick: () => location.reload() }, icon('refresh'), 'Erneut versuchen'),
         h('button', { class: 'btn btn-soft', type: 'button', onclick: connectDialog }, 'Verbindung ändern')));
 
-  /** Vor dem ersten Zeichnen: online Katalog holen, Stand abgleichen (höchstens 3 s warten).
+  /* ---------- Katalog und Metadaten der Online-Fassung ---------- */
+  const CATALOG = 'topics/catalog.js';
+  const META = 'topics/meta.js';
+
+  /** Neuen Katalog bzw. neue Metadaten übernehmen; geänderte Themen fliegen aus dem Speicher */
+  function applyContent(catalogSrc, metaSrc) {
+    const before = LA.meta.topics;
+    if (metaSrc) run(metaSrc, META);
+    if (catalogSrc) run(catalogSrc, CATALOG);
+    Object.keys(LA.topics).forEach((id) => {
+      const now = LA.meta.topics[id];
+      if (!now || !before[id] || now.h !== before[id].h) delete LA.topics[id];
+    });
+  }
+
+  /** Katalog und Metadaten frisch holen. Der Katalog wird nur geladen, wenn sein Hash sich geändert hat.
+   *  Rückgabe: true, wenn sich etwas geändert hat */
+  async function refreshContent(cached) {
+    // Ältere Inhalte ohne topics/meta.js: dann eben nur den Katalog
+    const metaSrc = await fetchText(META).catch((e) => (e.status === 404 ? '' : Promise.reject(e)));
+    const metaHash = (/"catalog":"(\w+)"/.exec(metaSrc) || [])[1];
+    const catalogSrc = cached && metaHash && cached.metaHash === metaHash && cached.catalog ? null : await fetchText(CATALOG);
+    if (cached && cached.meta === metaSrc && (catalogSrc == null || catalogSrc === cached.catalog)) return false;
+    applyContent(catalogSrc, metaSrc);
+    if (!LA.catalog.length) throw new Error('Der Katalog ist leer oder fehlerhaft');
+    cachePut(META, 'aktuell', metaSrc);
+    if (catalogSrc != null) cachePut(CATALOG, 'aktuell', catalogSrc);
+    return true;
+  }
+
+  /** Vor dem ersten Zeichnen. Lokal: sofort. Online: aus dem Cache sofort (Neues kommt im Hintergrund),
+   *  beim allerersten Start Katalog und Metadaten laden. Der Fortschritts-Abgleich läuft immer nebenher.
    *  Liefert null oder eine Ansicht, die statt der App erscheint (Einrichtung, Fehler). */
-  function ready() {
+  async function ready() {
     const done = (blocker = null) => ((booted = !blocker), blocker);
-    if (!LA.remote) return cfg ? Promise.race([sync(), wait(3000)]).then(() => done()) : Promise.resolve(done());
-    if (!cfg) return Promise.resolve(done(setupView()));
-    const first = sync();
-    return fetchText('topics/catalog.js')
-      .then((src) => {
-        run(src, 'topics/catalog.js');
-        if (!LA.catalog.length) throw new Error('Der Katalog ist leer oder fehlerhaft');
-        return Promise.race([first, wait(3000)]);
-      })
-      .then(() => done(), (e) => done(errorView(e)));
+    if (!LA.remote) {
+      if (cfg) sync();
+      return done();
+    }
+    if (!cfg) return done(setupView());
+    sync();
+    const [catalog, meta] = await Promise.all([cacheGet(CATALOG, 'aktuell'), cacheGet(META, 'aktuell')]);
+    if (catalog) {
+      const metaHash = (/"catalog":"(\w+)"/.exec(meta || '') || [])[1];
+      try {
+        applyContent(catalog, meta);
+      } catch (e) {}
+      if (LA.catalog.length) {
+        refreshContent({ catalog, meta: meta || '', metaHash }).then((changed) => changed && refreshView(), (e) => console.warn('Inhalte nicht aktualisiert', e));
+        return done();
+      }
+    }
+    try {
+      await refreshContent(null);
+      return done();
+    } catch (e) {
+      return done(errorView(e));
+    }
   }
 
   /** Zeile für die Einstellungen im Profil */
@@ -304,7 +383,7 @@
   }
 
   LA.sync = {
-    ready, sync, settingRow, connectDialog, fetchText, run,
+    ready, sync, settingRow, connectDialog, fetchText, cachedText, run,
     connected: () => !!cfg,
     status: () => status,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),

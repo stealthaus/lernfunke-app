@@ -197,11 +197,30 @@
     return card;
   }
 
+  /** Reihenfolge nach Fortschritt: begonnene zuerst (weiteste oben), dann neue, fertige zuletzt.
+   *  Gleichstand behält die Reihenfolge aus dem Katalog. progress(x) → { done, pct } */
+  LA.byProgress = (list, progress) => {
+    const rank = (p) => (p.pct >= 1 ? 2 : p.done > 0 ? 0 : 1);
+    return list
+      .map((x, i) => ({ x, i, p: progress(x) }))
+      .sort((a, b) => rank(a.p) - rank(b.p) || (rank(a.p) === 0 ? b.p.pct - a.p.pct : 0) || a.i - b.i)
+      .map((e) => e.x);
+  };
+  const seriesProgress = (sr) => {
+    const progs = sr.topics.filter((id) => LA.catalogEntry(id)).map(LA.topicProgress);
+    const done = progs.reduce((a, p) => a + p.done, 0);
+    const total = progs.reduce((a, p) => a + p.count, 0);
+    return { done, pct: total ? done / total : 0 };
+  };
+  const topicsByProgress = (list) => LA.byProgress(list, (t) => LA.topicProgress(t.id));
+
+  /** Startseite: braucht nur Katalog und topics/meta.js – kein Thema wird dafür geladen */
   LA.views.home = async () => {
     const st = LA.store.get();
-    // Ohne bisheriges Lernen: erste offene Station der ersten Lernreise (bzw. das erste Thema) vorschlagen
+    const activeSeries = () => LA.byProgress(LA.series.filter((x) => !isArchived(x)), seriesProgress);
+    // Ohne bisheriges Lernen: erste offene Station der obersten Lernreise (bzw. das erste Thema) vorschlagen
     const firstOpen = () => {
-      const sr = LA.series.find((x) => !isArchived(x));
+      const sr = activeSeries()[0];
       const ids = sr ? sr.topics : LA.catalog.map((t) => t.id);
       return ids.find((id) => LA.catalogEntry(id) && LA.topicProgress(id).pct < 1) || ids[0];
     };
@@ -211,16 +230,17 @@
       const rest = cur ? cur.series.topics.slice(cur.index + 1) : [];
       return rest.find((t) => LA.catalogEntry(t) && LA.topicProgress(t).pct < 1) || firstOpen();
     };
-    const lastId = st.lastTopic && LA.catalogEntry(st.lastTopic) ? st.lastTopic : firstOpen();
-    let last = lastId ? await LA.loadTopic(lastId).catch(() => null) : null;
-    if (last && !LA.nextLesson(last)) {
-      const nextId = openAfter(last.id);
-      const nextTopic = nextId && nextId !== last.id ? await LA.loadTopic(nextId).catch(() => null) : null;
-      if (nextTopic && LA.nextLesson(nextTopic)) last = nextTopic;
+    // Lektionen kommen aus topics/meta.js; fehlt ein Thema dort (veraltete Metadaten), doch laden
+    const known = (id) => LA.lessonsOf(id) || LA.loadTopic(id).then(() => true, () => false);
+    let lastId = st.lastTopic && LA.catalogEntry(st.lastTopic) ? st.lastTopic : firstOpen();
+    if (lastId && (await known(lastId)) && !LA.nextLessonOf(lastId)) {
+      const nextId = openAfter(lastId);
+      if (nextId && nextId !== lastId && (await known(nextId)) && LA.nextLessonOf(nextId)) lastId = nextId;
     }
+    const last = lastId && LA.catalogEntry(lastId);
     let continueCard = null;
     if (last) {
-      const next = LA.nextLesson(last);
+      const next = LA.nextLessonOf(last.id);
       const started = !!st.lastTopic;
       continueCard = h('a', { class: 'now-row', href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}` },
         h('span', { class: 'nr-kicker' }, started ? 'Weiterlernen' : 'Hier starten'),
@@ -228,12 +248,14 @@
           h('span', { class: 'nr-title' }, next ? next.title : 'Alle Lektionen geschafft – Zeit für Wiederholung!'),
           h('span', { class: 'nr-sub' }, last.title)),
         h('span', { class: 'nr-go' }, icon('arrowRight')));
+      // Das Thema hinter „Weiterlernen“ schon im Hintergrund holen – der Tipp darauf öffnet dann sofort
+      setTimeout(() => LA.loadTopic(last.id).catch(() => {}), 300);
     }
 
     // Lernreisen und Archiv: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
     const seriesWrap = h('div');
     const renderSeries = () => {
-      const active = LA.series.filter((sr) => !isArchived(sr));
+      const active = activeSeries();
       const archived = LA.series.filter(isArchived);
       seriesWrap.replaceChildren(...[
         active.length
@@ -249,7 +271,7 @@
     renderSeries();
 
     // Hier nur Themen ohne Lernreise – die übrigen stehen schon als Stationen oben
-    const loose = LA.catalog.filter((t) => !LA.seriesOf(t.id));
+    const loose = topicsByProgress(LA.catalog.filter((t) => !LA.seriesOf(t.id)));
 
     return {
       el: h('div', { class: 'page home' },
@@ -269,7 +291,7 @@
     const empty = h('p', { class: 'muted', hidden: true }, 'Kein Thema gefunden – sag Claude, was du lernen möchtest.');
     const text = (t) => [t.title, t.subtitle, ...(t.tags || []), (LA.seriesOf(t.id) || { series: {} }).series.title].join(' ').toLowerCase();
     const render = (q = '') => {
-      const list = LA.catalog.filter((t) => text(t).includes(q.toLowerCase()));
+      const list = topicsByProgress(LA.catalog.filter((t) => text(t).includes(q.toLowerCase())));
       grid.replaceChildren(...list.map(topicCard), newTopicCard());
       empty.hidden = list.length > 0;
     };
@@ -286,11 +308,12 @@
     };
   };
 
+  /** Themenwunsch als Notiz – Claude nimmt ihn beim nächsten /notizen in die Themenliste auf */
   function newTopicCard() {
-    return h('div', { class: 'topic-card topic-new' },
-      h('div', { class: 'tn-plus' }, '+'),
-      h('h3', null, 'Neues Thema'),
-      h('p', { class: 'muted' }, 'Sag Claude einfach, was du lernen möchtest – daraus entstehen neue Lerninhalte mit Erklärungen, Quiz und Spielen.'));
+    return h('button', { class: 'topic-card topic-new', type: 'button', onclick: () => LA.notes.open('topic') },
+      h('span', { class: 'tn-plus', 'aria-hidden': 'true' }, '+'),
+      h('h3', null, 'Neues Thema wünschen'),
+      h('p', { class: 'muted' }, 'Schreib auf, was du lernen möchtest. Claude setzt es am Rechner auf deine Themenliste – daraus entstehen neue Lernreisen.'));
   }
 
   /* ---------- Profil ---------- */

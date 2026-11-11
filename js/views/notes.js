@@ -3,9 +3,11 @@
  *  · Karteikarte – Begriff oder Konzept, das auf eine Karte soll. Claude prüft, ob es schon eine gibt,
  *    und schlägt sonst eine vor.
  *  · Frage – Freitext. Claude antwortet kurz und schreibt die Kurzantwort an die Notiz.
+ *  · Thema – Wunsch für neue Lerninhalte (auch über die Kachel „Neues Thema“ auf der Startseite).
+ *    Claude setzt ihn auf die Themenliste, aus der neue Lernreisen entstehen.
  *
  * LA.notes.button()  Notiz-Knopf für Kopfzeile, Player und Kartenrunde
- * LA.notes.open()    Dialog; merkt sich die Stelle (Thema, Lektion, Schritt, sichtbare Überschrift)
+ * LA.notes.open(kind?) Dialog (optional mit vorgewählter Art); merkt sich die Stelle (Thema, Lektion, Schritt, sichtbare Überschrift)
  *                    und übernimmt markierten Text als Zitat
  * LA.notes.list()    Liste als Ebene über der aktuellen Ansicht – „Zurück“ landet wieder genau dort
  *                    (eine laufende Lektion bleibt erhalten)
@@ -35,6 +37,14 @@
       placeholder: 'Was ist dir unklar?',
       withQuote: 'Was ist dir an der Stelle unklar?',
       hint: 'Claude beantwortet die Frage am Rechner kurz – die Antwort steht danach auch hier unter Notizen.',
+    },
+    topic: {
+      label: 'Thema',
+      icon: 'route',
+      field: 'Was möchtest du lernen?',
+      placeholder: 'Thema, Anlass, was dich daran interessiert …',
+      withQuote: 'Welches Thema steckt in dem Zitat?',
+      hint: 'Claude setzt den Wunsch am Rechner auf deine Themenliste – daraus entstehen neue Lernreisen.',
     },
   };
   let lastKind = 'card';
@@ -120,11 +130,11 @@
   }
 
   /* ---------- Dialog ---------- */
-  function open() {
+  function open(preset) {
     if (document.querySelector('.note-dialog')) return;
     const ctx = context();
     let quote = takeQuote();
-    let kind = lastKind;
+    let kind = typeof preset === 'string' && KINDS[preset] ? preset : lastKind;
     const label = h('label', { class: 'ce-label', for: 'note-text' });
     const text = h('textarea', { class: 'ce-input', id: 'note-text', rows: 4, autocapitalize: 'sentences' });
     const hint = h('p', { class: 'ce-hint' });
@@ -199,7 +209,7 @@
   }
 
   const button = () =>
-    h('button', { class: 'icon-btn note-btn', type: 'button', onclick: open, 'aria-label': 'Notiz anlegen', title: 'Notiz: Kartenwunsch oder Frage festhalten' }, icon('note'));
+    h('button', { class: 'icon-btn note-btn', type: 'button', onclick: open, 'aria-label': 'Notiz anlegen', title: 'Notiz: Kartenwunsch, Frage oder Themenwunsch festhalten' }, icon('note'));
 
   /* ---------- Liste ---------- */
   const fmt = (iso) => {
@@ -276,7 +286,7 @@
         back,
         h('div', { class: 'section-head' }, h('h1', null, 'Notizen'),
           h('button', { class: 'btn btn-primary', type: 'button', onclick: open }, icon('plus'), 'Neue Notiz')),
-        h('p', { class: 'muted note-intro' }, 'Kartenwünsche und Fragen, die du beim Lernen festgehalten hast. Am Rechner in Claude Code ', h('code', null, '/notizen'), ' aufrufen: Claude beantwortet die Fragen kurz, prüft die Kartenwünsche gegen die vorhandenen Karten und hakt alles hier ab.'),
+        h('p', { class: 'muted note-intro' }, 'Kartenwünsche, Fragen und Themenwünsche, die du beim Lernen festgehalten hast. Am Rechner in Claude Code ', h('code', null, '/notizen'), ' aufrufen: Claude beantwortet die Fragen kurz, prüft die Kartenwünsche gegen die vorhandenen Karten, setzt neue Themen auf deine Themenliste und hakt alles hier ab.'),
         tabs,
         empty,
         list,
