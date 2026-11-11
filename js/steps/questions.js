@@ -1,4 +1,4 @@
-/* Prüfbare Schritt-Typen: quiz, truefalse, estimate, cloze.
+/* Prüfbare Schritt-Typen: quiz, truefalse, estimate, cloze, codebug.
  * render() liefert { el, check() → { correct, score, solution? }, key?(e) } */
 (function () {
   'use strict';
@@ -264,6 +264,93 @@
           });
           chips.forEach((c) => (c.el.disabled = true));
           return { correct: right === blanks.length, score: right / blanks.length };
+        },
+      };
+    },
+  });
+
+  /* ---------- codebug: fehlerhafte Zeile(n) im Code antippen ----------
+   * code + lang wie bei der code-Grafik, answer: Zeilennummer ab 1 (oder Liste davon),
+   * why: { 7: 'Begründung zu Zeile 7' } – erscheint nach dem Prüfen an der Zeile (richtig oder angetippt).
+   * kicker: eigener Aufgabenhinweis, z. B. für Terminal-Ausgaben („Tippe die Zeile mit der Ursache an“). */
+  LA.defineStep('codebug', {
+    mode: 'check',
+    label: 'Fehler finden',
+    render(step, ctx) {
+      const multi = Array.isArray(step.answer);
+      const answers = new Set(multi ? step.answer : [step.answer]);
+      const why = step.why || {};
+      const selected = new Set();
+      let locked = false;
+      const st = {};
+      const lines = String(step.code).replace(/\n$/, '').split('\n');
+      const rows = lines.map((ln, i) => {
+        const n = i + 1;
+        const blank = !ln.trim();
+        const indent = ln.match(/^\s*/)[0].length;
+        const mark = h('span', { class: 'cb-mark', 'aria-hidden': 'true' });
+        const el = h(blank ? 'div' : 'button', {
+          class: 'cb-line' + (blank ? ' cb-blank' : ''),
+          type: blank ? null : 'button',
+          'aria-pressed': blank ? null : 'false',
+          'aria-label': blank ? null : `Zeile ${n}: ${ln.trim()}`,
+          onclick: blank ? null : () => toggle(n),
+        },
+          h('span', { class: 'cb-no' }, String(n)),
+          mark,
+          // Hängender Einzug: Umbrochene Zeilen bleiben unter ihrer Einrückung (wichtig für YAML)
+          h('span', { class: 'cb-code', style: { '--ind': indent }, html: LA.highlight(ln.slice(indent), step.lang, st) || ' ' }));
+        return { n, el, mark, blank };
+      });
+
+      function toggle(n) {
+        if (locked) return;
+        if (multi) selected.has(n) ? selected.delete(n) : selected.add(n);
+        else {
+          selected.clear();
+          selected.add(n);
+        }
+        rows.forEach((r) => {
+          if (r.blank) return;
+          r.el.classList.toggle('selected', selected.has(r.n));
+          r.el.setAttribute('aria-pressed', String(selected.has(r.n)));
+        });
+        LA.fx.sound.tap();
+        ctx.ready(selected.size > 0);
+      }
+
+      const notesEl = h('div', { class: 'cb-notes' });
+      const kicker = step.kicker || (multi ? 'Tippe alle fehlerhaften Zeilen an' : 'Tippe die fehlerhafte Zeile an');
+      return {
+        el: h('div', { class: 'step step-codebug' },
+          LA.ui.stepHead(step, ctx, { kicker, text: step.question }),
+          h('div', { class: 'cb-wrap' },
+            step.file ? h('div', { class: 'cb-file' }, step.file) : null,
+            h('div', { class: 'code cb-code-block' + (step.lang ? ' lang-' + step.lang : ''), role: 'group', 'aria-label': step.file || 'Code' },
+              rows.map((r) => r.el))),
+          notesEl),
+        check() {
+          locked = true;
+          let hits = 0, misses = 0;
+          const notes = [];
+          rows.forEach((r) => {
+            if (r.blank) return;
+            r.el.disabled = true;
+            const isAns = answers.has(r.n), isSel = selected.has(r.n);
+            if (isAns) r.el.classList.add('correct');
+            if (isSel && !isAns) r.el.classList.add('wrong');
+            if (isAns || isSel) r.mark.replaceChildren(LA.icon(isAns ? 'check' : 'x'));
+            if (isAns && isSel) hits++;
+            if (isSel && !isAns) misses++;
+            if (why[r.n] && (isAns || isSel)) notes.push([r.n, isAns, why[r.n]]);
+          });
+          notes.forEach(([n, ok, text]) =>
+            notesEl.appendChild(h('p', { class: 'cb-note ' + (ok ? 'ok' : 'no') }, LA.icon(ok ? 'check' : 'x'),
+              h('span', { html: `<strong>Zeile ${n}:</strong> ` + LA.mdi(text) }))));
+          const correct = hits === answers.size && misses === 0;
+          const score = multi ? LA.clamp((hits - misses) / answers.size, 0, 1) : correct ? 1 : 0;
+          const list = [...answers].sort((a, b) => a - b);
+          return { correct, score, solution: correct ? undefined : `Gesucht war Zeile ${list.join(', ')}.` };
         },
       };
     },

@@ -107,7 +107,7 @@
   };
 
   /** Prüfbare Schritt-Typen: landen im Test und lassen sich als Favorit markieren */
-  const TESTABLE = ['quiz', 'truefalse', 'cloze', 'order', 'categorize', 'estimate'];
+  const TESTABLE = ['quiz', 'truefalse', 'cloze', 'order', 'categorize', 'estimate', 'codebug'];
   /** Offene Fragen (think) und Paar-Spiele (match, memory) lassen sich auch merken – in Tests kommen sie nur als Favorit */
   const FAVABLE = [...TESTABLE, 'think', 'match', 'memory'];
   LA.testOnlyAsFav = (type) => FAVABLE.includes(type) && !TESTABLE.includes(type);

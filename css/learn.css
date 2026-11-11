@@ -2286,3 +2286,123 @@ text.f-c6 { fill: color-mix(in srgb, var(--c6) var(--ink-mix), black); }
   color: var(--good);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--good) 45%, transparent);
 }
+
+/* ---------- codebug: fehlerhafte Zeile antippen ----------
+ * Code bleibt dunkel wie die code-Grafik. Jede Zeile ist ein Button (≥ 44 px hoch);
+ * Status zeigt ein Symbol in der Randspalte (✓ / ✗), nicht nur die Fläche. */
+.cb-file {
+  padding: 6px 12px;
+  background: var(--code-bg);
+  color: var(--code-muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+}
+.cb-code-block {
+  padding: 4px 0;
+}
+.cb-line {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cb-line + .cb-line {
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+.cb-blank {
+  min-height: 16px;
+  cursor: default;
+}
+.cb-line:hover:not(:disabled):not(.cb-blank) {
+  background: rgb(255 255 255 / 0.06);
+}
+.cb-line:disabled {
+  cursor: default;
+}
+.cb-no {
+  flex: none;
+  width: 2.2em;
+  padding-right: 0.4em;
+  text-align: right;
+  color: var(--code-muted);
+  user-select: none;
+}
+.cb-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+}
+.cb-mark .ic {
+  width: 16px;
+  height: 16px;
+}
+.cb-mark svg {
+  stroke-width: 3;
+}
+.cb-code {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0 10px calc((var(--ind, 0) + 2) * 1ch);
+  text-indent: -2ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cb-line.selected {
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.cb-line.selected .cb-mark {
+  border: 2px solid var(--accent);
+}
+.cb-line.correct {
+  background: color-mix(in srgb, var(--good-strong) 45%, transparent);
+  box-shadow: inset 4px 0 0 #8ce99a;
+}
+.cb-line.correct .cb-mark,
+.cb-line.wrong .cb-mark {
+  border: 0;
+  background: #fff;
+  color: #111;
+}
+.cb-line.wrong {
+  background: rgb(255 255 255 / 0.14);
+  box-shadow: inset 4px 0 0 var(--code-muted);
+  animation: shake 0.4s;
+}
+.cb-notes:empty {
+  display: none;
+}
+.cb-notes {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cb-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 0.92rem;
+}
+.cb-note .ic {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
