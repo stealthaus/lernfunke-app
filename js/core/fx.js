@@ -92,10 +92,46 @@
   function toast(title, text, kind = 'info') {
     let box = document.getElementById('toasts');
     if (!box) document.body.appendChild((box = h('div', { id: 'toasts' })));
-    const el = h('div', { class: `toast toast-${kind}`, role: 'status' }, h('strong', null, title), text ? h('span', null, text) : null);
+    const el = h('div', { class: `toast toast-${kind}`, role: 'status', title: 'Antippen oder wegwischen zum Schließen' }, h('strong', null, title), text ? h('span', null, text) : null);
     box.appendChild(el);
-    setTimeout(() => el.classList.add('out'), 3600);
-    setTimeout(() => el.remove(), 4000);
+    // Oben am Rand, kurz sichtbar; Antippen oder Wischen (hoch/seitlich) schließt sofort.
+    let gone = false;
+    const close = (dx = 0, dy = 0) => {
+      if (gone) return;
+      gone = true;
+      el.style.transform = dx || dy ? `translate(${dx * 3}px, ${Math.min(dy, 0) * 3}px)` : '';
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 250);
+    };
+    setTimeout(close, text ? 2600 : 1800);
+
+    let sx = 0, sy = 0, dragging = false;
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      sx = e.clientX;
+      sy = e.clientY;
+      el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging || gone) return;
+      const dx = e.clientX - sx, dy = Math.min(e.clientY - sy, 0);
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    const end = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      el.style.transition = '';
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) > 40 || dy < -20 || (Math.abs(dx) < 8 && Math.abs(dy) < 8)) close(dx, dy);
+      else el.style.transform = '';
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', () => {
+      dragging = false;
+      el.style.transition = '';
+      el.style.transform = '';
+    });
   }
 
   function levelUp(level) {
