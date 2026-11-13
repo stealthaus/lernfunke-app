@@ -1967,6 +1967,17 @@ button.back-link {
 }
 
 /* ---------- Lab-Liste ---------- */
+.sc-cards {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--text);
+}
+.sc-cards .sc-due {
+  margin-left: 2px;
+  padding: 0 6px;
+}
 .sc-lab {
   display: inline-flex;
   align-items: center;

@@ -146,7 +146,8 @@
       next
         ? h('a', { class: 'sc-next', href: `#/t/${next.id}` }, `${progs[nextIdx].done ? 'Weiter' : 'Nächste Station'}: `, h('strong', null, `${nextIdx + 1}. ${next.title}`), icon('arrowRight'))
         : h('span', { class: 'sc-next' }, icon('check'), 'Alle Stationen geschafft'),
-      dueN ? h('a', { class: 'sc-count sc-due', href: `#/r/${sr.id}/karten`, title: 'Fällige Karteikarten' }, `${dueN} fällig`) : null,
+      h('a', { class: 'sc-count sc-cards', href: `#/r/${sr.id}/karten`, title: dueN ? `${dueN} Karten fällig` : 'Karteikarten der Lernreise' }, icon('cards'), 'Karteikarten',
+        dueN ? h('span', { class: 'sc-due' }, `${dueN} fällig`) : null),
       labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
     const head = h('div', { class: 'sc-head' },
