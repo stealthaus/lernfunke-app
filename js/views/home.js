@@ -165,7 +165,7 @@
     archiveBtn.addEventListener('click', () => {
       setArchived(sr, !archived);
       if (!archived) setOpen(sr, false);
-      LA.fx.toast(archived ? 'Lernreise zurückgeholt' : 'Lernreise archiviert', archived ? sr.title : 'Fortschritt und Karteikarten bleiben erhalten – du findest sie unten im Archiv.');
+      LA.fx.toast(archived ? 'Lernreise zurückgeholt' : 'Lernreise archiviert', archived ? sr.title : 'Fortschritt und Karteikarten bleiben erhalten – du findest sie im Tab „Archiv“.');
       onArchive();
     });
 
@@ -214,6 +214,17 @@
   };
   const topicsByProgress = (list) => LA.byProgress(list, (t) => LA.topicProgress(t.id));
 
+  /* Tabs der Lernreisen: begonnen, fertig (100 %), noch nicht begonnen, archiviert.
+   * Die Wahl gilt für diese Sitzung – zurück auf der Startseite bleibt der Tab offen. */
+  const SERIES_TABS = [['progress', 'In Arbeit'], ['done', 'Abgeschlossen'], ['open', 'Offen'], ['archived', 'Archiv']];
+  const SERIES_EMPTY = {
+    progress: 'Gerade läuft keine Lernreise – starte eine unter „Offen“.',
+    done: 'Noch keine Lernreise ganz geschafft.',
+    open: 'Alle Lernreisen sind begonnen.',
+    archived: 'Nichts archiviert. Über „Archivieren“ in einer Reise räumst du sie hierher – Fortschritt und Karteikarten bleiben.',
+  };
+  let seriesTab = null;
+
   /** Startseite: braucht nur Katalog und topics/meta.js – kein Thema wird dafür geladen */
   LA.views.home = async () => {
     const st = LA.store.get();
@@ -252,21 +263,32 @@
       setTimeout(() => LA.loadTopic(last.id).catch(() => {}), 300);
     }
 
-    // Lernreisen und Archiv: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
+    // Lernreisen in vier Tabs: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
     const seriesWrap = h('div');
+    const groups = () => {
+      const g = { progress: [], done: [], open: [], archived: [] };
+      LA.byProgress(LA.series, seriesProgress).forEach((sr) => {
+        const p = seriesProgress(sr);
+        g[isArchived(sr) ? 'archived' : p.pct >= 1 ? 'done' : p.done > 0 ? 'progress' : 'open'].push(sr);
+      });
+      return g;
+    };
     const renderSeries = () => {
-      const active = activeSeries();
-      const archived = LA.series.filter(isArchived);
-      seriesWrap.replaceChildren(...[
-        active.length
-          ? h('section', { class: 'series-list' }, h('div', { class: 'section-head' }, h('h2', null, active.length > 1 ? 'Lernreisen' : 'Lernreise')), active.map((sr) => seriesCard(sr, renderSeries)))
-          : null,
-        archived.length
-          ? h('details', { class: 'series-archive' },
-              h('summary', null, icon('archive'), `Archiv · ${LA.plural(archived.length, 'Lernreise', 'Lernreisen')}`),
-              archived.map((sr) => seriesCard(sr, renderSeries)))
-          : null,
-      ].filter(Boolean));
+      if (!LA.series.length) return;
+      const g = groups();
+      // Ohne eigene Wahl: der erste Tab, in dem etwas liegt
+      if (!seriesTab || !SERIES_TABS.some(([k]) => k === seriesTab)) seriesTab = (SERIES_TABS.find(([k]) => g[k].length) || SERIES_TABS[0])[0];
+      const tabs = h('div', { class: 'segmented series-tabs', role: 'group', 'aria-label': 'Lernreisen filtern' },
+        SERIES_TABS.map(([key, label]) => {
+          const on = key === seriesTab;
+          return h('button', { type: 'button', class: on ? 'on' : null, 'aria-pressed': String(on), onclick: () => ((seriesTab = key), renderSeries()) },
+            label, h('span', { class: 'st-count' }, String(g[key].length)));
+        }));
+      const list = g[seriesTab];
+      seriesWrap.replaceChildren(h('section', { class: 'series-list' + (seriesTab === 'archived' ? ' is-archive' : '') },
+        h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen')),
+        tabs,
+        list.length ? list.map((sr) => seriesCard(sr, renderSeries)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
     };
     renderSeries();
 
