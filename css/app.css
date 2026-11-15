@@ -1120,6 +1120,15 @@ a.sc-due {
   outline: 2px solid var(--accent-line);
   outline-offset: 2px;
 }
+.xp-joker {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 34px;
+  padding: 4px 0;
+  border: 1px dashed var(--border-strong);
+  color: var(--text);
+}
 .xp-day {
   position: absolute;
   bottom: -22px;
@@ -1141,6 +1150,87 @@ a.sc-due {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--accent-text);
+}
+/* Serie & Joker: drei Felder je Monat – bereit = Pastellfläche, eingesetzt = gestrichelt mit Datum */
+.streak-card > p {
+  max-width: var(--measure);
+  margin: 4px 0 16px;
+}
+.joker-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.joker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--p1);
+  border: 2px solid var(--rule);
+  color: var(--text);
+}
+.joker .ic {
+  grid-row: span 2;
+}
+.joker .ic svg {
+  width: 26px;
+  height: 26px;
+}
+.joker-state {
+  font-weight: 700;
+}
+.joker-date {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.joker.used {
+  background: transparent;
+  border: 2px dashed var(--border-strong);
+}
+.joker.used .ic {
+  color: var(--muted);
+}
+.streak-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 16px;
+  margin: 0;
+}
+.streak-facts > div {
+  display: flex;
+  flex-direction: column-reverse;
+  border-top: 1px solid var(--rule);
+  padding-top: 6px;
+}
+.streak-facts dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.streak-facts dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+@media (max-width: 560px) {
+  .joker-slots {
+    gap: 8px;
+  }
+  .joker {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 6px;
+  }
+  .joker-state {
+    font-size: 0.85rem;
+  }
+  .joker .ic {
+    grid-row: auto;
+  }
 }
 .badges {
   display: grid;

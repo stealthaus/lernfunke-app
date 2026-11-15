@@ -60,7 +60,7 @@
     h('div', { class: 'topbar-inner' },
       h('a', { class: 'brand', href: '#/' }, brandMark(), h('span', { class: 'brand-name' }, 'Lernfunke')),
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
-        h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge)' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl),
+        h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, ringBox, todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level' }, levelEl)),
       h('div', { class: 'top-actions' }, soundBtn, themeBtn, LA.notes.button(),
@@ -68,10 +68,10 @@
 
   function updateHeader() {
     const st = LA.store.get();
-    const streak = LA.store.streak();
-    streakEl.textContent = streak;
-    streakEl.parentElement.classList.toggle('dim', !streak);
-    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(streak, 'Tag', 'Tage')}`);
+    const si = LA.store.streakInfo();
+    streakEl.textContent = si.days;
+    streakEl.parentElement.classList.toggle('dim', !si.days);
+    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}, ${si.left} von ${si.perMonth} Jokern übrig`);
     const today = LA.store.todayXP();
     todayEl.textContent = `${today} XP`;
     todayEl.parentElement.setAttribute('aria-label', `Heute ${today} von ${st.goal} XP`);
@@ -195,6 +195,15 @@
     refresh: render,
   };
 
+  /** Hat ein Joker seit dem letzten Öffnen die Serie gehalten, einmal Bescheid geben */
+  function announceJokers() {
+    const news = LA.store.newJokerDays();
+    if (!news.length) return;
+    const si = LA.store.streakInfo();
+    const who = news.length === 1 ? 'Ein Joker hat' : `${news.length} Joker haben`;
+    LA.fx.toast('Joker eingesetzt', `${who} deine Serie von ${LA.plural(si.days, 'Tag', 'Tagen')} gehalten. Diesen Monat noch ${si.left} übrig.`);
+  }
+
   /* ---------- Start ---------- */
   function init() {
     const app = document.getElementById('app');
@@ -207,6 +216,7 @@
       if (blocker) return main.replaceChildren(blocker.el);
       window.addEventListener('hashchange', () => render());
       render();
+      announceJokers();
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

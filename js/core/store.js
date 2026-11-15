@@ -275,13 +275,63 @@
     return { level: lvl, into: rest, need: need(lvl), pct: rest / need(lvl) };
   }
 
-  /* ---------- Streak: Tage in Folge mit XP, bis heute oder gestern ---------- */
-  function streak() {
-    let d = LA.today();
-    if (!state.days[d]) d = LA.addDays(d, -1);
-    let n = 0;
-    while (state.days[d] > 0) (n++, (d = LA.addDays(d, -1)));
-    return n;
+  /* ---------- Streak: Tage in Folge mit XP, bis heute oder gestern – mit Jokern ----------
+   * Pro Kalendermonat gibt es JOKERS Joker. Eine Lücke (Tage ohne XP zwischen zwei Lerntagen oder
+   * vom letzten Lerntag bis gestern) wird automatisch überbrückt, wenn die Joker der betroffenen
+   * Monate für alle Tage der Lücke reichen – sonst reißt die Serie und kein Joker wird verbraucht.
+   * Joker-Tage halten die Serie, zählen aber nicht mit. Alles wird aus `days` abgeleitet:
+   * kein eigenes Feld, also nichts, was beim Sync zusammengeführt werden müsste. */
+  const JOKERS = 3;
+  const monthOf = (d) => d.slice(0, 7);
+  let streakCache = null;
+  function streakInfo() {
+    const today = LA.today();
+    if (streakCache && streakCache.state === state && streakCache.today === today) return streakCache.info;
+    const learned = Object.keys(state.days).filter((d) => state.days[d] > 0 && d <= today).sort();
+    const used = {}; // 'YYYY-MM' → verbrauchte Joker
+    const jokerDays = [];
+    let days = 0;
+    let best = 0;
+    let last = null;
+    /** Lücke last+1 … end überbrücken, wenn möglich (Joker werden dann verbraucht) */
+    const bridge = (end) => {
+      const gap = [];
+      for (let d = LA.addDays(last, 1); d <= end; d = LA.addDays(d, 1)) gap.push(d);
+      const need = {};
+      gap.forEach((d) => (need[monthOf(d)] = (need[monthOf(d)] || 0) + 1));
+      if (Object.keys(need).some((m) => (used[m] || 0) + need[m] > JOKERS)) return false;
+      for (const m in need) used[m] = (used[m] || 0) + need[m];
+      jokerDays.push(...gap);
+      return true;
+    };
+    for (const d of learned) {
+      days = last && (LA.addDays(last, 1) === d || bridge(LA.addDays(d, -1))) ? days + 1 : 1;
+      best = Math.max(best, days);
+      last = d;
+    }
+    const yesterday = LA.addDays(today, -1);
+    if (last && last < yesterday && !bridge(yesterday)) days = 0;
+    const left = JOKERS - (used[monthOf(today)] || 0);
+    const info = {
+      days, best, left, perMonth: JOKERS,
+      jokerDays, // alle überbrückten Tage, älteste zuerst
+      learnedToday: !!state.days[today],
+      savedYesterday: days > 0 && jokerDays.includes(yesterday),
+    };
+    streakCache = { state, today, info };
+    return info;
+  }
+  const streak = () => streakInfo().days;
+
+  /** Neue Joker-Einsätze seit dem letzten Aufruf (je Gerät) – für einen Hinweis beim Start */
+  const KEY_JOKER_SEEN = 'lernfunke.jokerSeen';
+  function newJokerDays() {
+    const info = streakInfo();
+    // ohne Merker (neues Gerät, erster Start) nur die letzte Woche – alte Einsätze sind keine Nachricht
+    const seen = maxStr(readLS(KEY_JOKER_SEEN), LA.addDays(LA.today(), -8));
+    const news = info.days ? info.jokerDays.filter((d) => d > seen) : [];
+    if (info.jokerDays.length) writeLS(KEY_JOKER_SEEN, info.jokerDays[info.jokerDays.length - 1]);
+    return news;
   }
 
   /* ---------- XP ---------- */
@@ -559,6 +609,8 @@
     { id: 'goal', emoji: '🎯', title: 'Zielstrebig', desc: 'Tagesziel erreicht' },
     { id: 'streak3', emoji: '🔥', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3 },
     { id: 'streak7', emoji: '🏅', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
+    { id: 'joker', emoji: '🛟', title: 'Gerettet', desc: 'Ein Joker hat deine Serie gehalten', test: () => streakInfo().jokerDays.length > 0 },
+    { id: 'streak30', emoji: '📅', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
     { id: 'level5', emoji: '🚀', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
     { id: 'level10', emoji: '🌟', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
     { id: 'cards50', emoji: '🃏', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
@@ -641,7 +693,7 @@
   LA.store = {
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
-    levelInfo, streak, addXP, todayXP, topic, visit, lessonResult, best, testResult,
+    levelInfo, streak, streakInfo, newJokerDays, addXP, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote,

@@ -43,7 +43,8 @@
   function hero(continueRow) {
     const st = LA.store.get();
     const lvl = LA.store.levelInfo();
-    const streak = LA.store.streak();
+    const si = LA.store.streakInfo();
+    const streak = si.days;
     const todayXP = LA.store.todayXP();
     const reached = todayXP >= st.goal;
     const date = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -52,12 +53,12 @@
       h('div', { class: 'hh-line' },
         h('span', null, date),
         h('a', { href: '#/profil' }, `Level ${lvl.level}`)),
-      h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge. Statistik und Abzeichen öffnen` },
+      h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge, ${si.left} Joker übrig. Statistik und Abzeichen öffnen` },
         h('span', { class: 'hh-giant', 'aria-hidden': 'true' }, String(todayXP)),
         h('span', { class: 'hh-legend', 'aria-hidden': 'true' },
           h('span', { class: 'hh-unit' }, 'XP heute'),
           h('span', null, reached ? '✓ Tagesziel geschafft' : `Ziel ${st.goal} · noch ${st.goal - todayXP}`),
-          h('span', null, streak ? `${LA.plural(streak, 'Tag', 'Tage')} in Folge` : 'Serie: heute starten'),
+          h('span', null, streak ? `${LA.plural(streak, 'Tag', 'Tage')} in Folge · ${si.left} Joker` : 'Serie: heute starten'),
           h('span', null, `${lvl.into} / ${lvl.need} XP bis Level ${lvl.level + 1}`))),
       h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': 'Tagesziel', 'aria-valuenow': String(Math.min(todayXP, st.goal)), 'aria-valuemax': String(st.goal) },
         h('div', { style: { width: Math.min(1, todayXP / st.goal) * 100 + '%' } })),
@@ -344,7 +345,10 @@
     const st = LA.store.get();
     const lvl = LA.store.levelInfo();
 
-    // XP der letzten 14 Tage
+    const si = LA.store.streakInfo();
+    const jokerSet = new Set(si.jokerDays);
+
+    // XP der letzten 14 Tage, Joker-Tage mit Schild
     const days = Array.from({ length: 14 }, (_, i) => LA.addDays(LA.today(), i - 13));
     const maxXP = Math.max(st.goal, ...days.map((d) => st.days[d] || 0));
     const chart = h('div', { class: 'xp-chart' },
@@ -352,10 +356,32 @@
       days.map((d) => {
         const v = st.days[d] || 0;
         const [, , dd] = d.split('-');
-        return h('div', { class: 'xp-col' + (d === LA.today() ? ' today' : ''), title: `${d}: ${v} XP` },
-          h('div', { class: 'xp-bar' + (v >= st.goal ? ' hit' : ''), style: { height: (v / maxXP) * 100 + '%' } }),
+        const joker = jokerSet.has(d);
+        return h('div', { class: 'xp-col' + (d === LA.today() ? ' today' : ''), title: joker ? `${d}: Joker eingesetzt` : `${d}: ${v} XP` },
+          joker ? h('div', { class: 'xp-joker' }, icon('shield'))
+            : h('div', { class: 'xp-bar' + (v >= st.goal ? ' hit' : ''), style: { height: (v / maxXP) * 100 + '%' } }),
           h('div', { class: 'xp-day' }, dd));
       }));
+
+    // Joker dieses Monats: bereite zuerst, dann die eingesetzten mit Datum
+    const month = LA.today().slice(0, 7);
+    const monthName = new Date().toLocaleDateString('de-DE', { month: 'long' });
+    const usedDays = si.jokerDays.filter((d) => d.startsWith(month));
+    const dayLabel = (d) => new Date(d + 'T12:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric' });
+    const jokers = h('section', { class: 'card streak-card' },
+      h('h2', null, 'Serie & Joker'),
+      h('p', { class: 'muted' }, `Verpasst du einen Tag, springt automatisch ein Joker ein und deine Serie hält. Jeden Monat gibt es ${si.perMonth} neue, übrige verfallen. Joker-Tage halten die Serie, zählen aber nicht mit.`),
+      h('ol', { class: 'joker-slots', 'aria-label': `Joker im ${monthName}: ${si.left} von ${si.perMonth} übrig` },
+        Array.from({ length: si.perMonth }, (_, i) => {
+          const used = i >= si.left ? usedDays[i - si.left] : null;
+          return h('li', { class: 'joker' + (used ? ' used' : '') }, icon('shield'),
+            h('span', { class: 'joker-state' }, used ? 'Eingesetzt' : 'Bereit'),
+            h('span', { class: 'joker-date' }, used ? dayLabel(used) : monthName));
+        })),
+      h('dl', { class: 'streak-facts' },
+        h('div', null, h('dt', null, 'Aktuelle Serie'), h('dd', null, LA.plural(si.days, 'Tag', 'Tage'))),
+        h('div', null, h('dt', null, 'Längste Serie'), h('dd', null, LA.plural(si.best, 'Tag', 'Tage'))),
+        h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–'))));
 
     const badges = h('div', { class: 'badges' }, LA.store.BADGES.map((b) =>
       h('div', { class: 'badge' + (st.badges[b.id] ? ' earned' : ''), title: st.badges[b.id] ? 'Erhalten am ' + st.badges[b.id] : 'Noch nicht erhalten' },
@@ -412,6 +438,7 @@
           h('dl', { class: 'profile-stats' },
             [[LA.store.streak(), 'Tage Serie'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt'], [st.stats.games, 'Spiele']]
               .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n)))))),
+        jokers,
         h('section', { class: 'card' }, h('h2', null, 'Die letzten 14 Tage'), chart),
         h('section', null, h('h2', null, 'Abzeichen'), badges),
         h('section', { class: 'card settings' },
