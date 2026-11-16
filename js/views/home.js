@@ -39,6 +39,29 @@
     return topic.lessons.find((l) => !(done[l.id] && done[l.id].done)) || null;
   };
 
+  /** Joker-Angebot: gestern nicht gelernt, ein Klick hält die Serie. Ohne Angebot null. */
+  function jokerOffer() {
+    const si = LA.store.streakInfo();
+    const o = si.offer;
+    if (!o) return null;
+    const n = o.gap.length;
+    const since = new Date(o.gap[0] + 'T12:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric' });
+    return h('div', { class: 'joker-offer', role: 'group', 'aria-label': 'Joker einsetzen' },
+      icon('shield'),
+      h('p', null,
+        h('strong', null, n === 1 ? 'Gestern nicht gelernt.' : `Seit dem ${since} nicht gelernt.`),
+        ` Mit ${n === 1 ? 'einem Joker' : n + ' Jokern'} hältst du deine Serie von ${LA.plural(o.saves, 'Tag', 'Tagen')}. Diesen Monat hast du noch ${si.left} von ${si.perMonth}.`),
+      h('button', {
+        class: 'btn btn-ghost', type: 'button',
+        onclick: () => {
+          if (!LA.store.useJoker()) return;
+          const after = LA.store.streakInfo();
+          LA.fx.toast('Joker eingesetzt', `Deine Serie hält: ${LA.plural(after.days, 'Tag', 'Tage')}. Diesen Monat noch ${after.left} übrig.`);
+          LA.router.refresh();
+        },
+      }, n === 1 ? 'Joker einsetzen' : `${n} Joker einsetzen`));
+  }
+
   /** Kopf der Startseite im Fahrplan-Stil: Datum, XP von heute als große Zahl, darunter die Hauptaktion */
   function hero(continueRow) {
     const st = LA.store.get();
@@ -337,6 +360,7 @@
     return {
       el: h('div', { class: 'page home' },
         hero(continueCard),
+        jokerOffer(),
         challengesSection(),
         seriesWrap,
         h('section', null,
@@ -483,7 +507,8 @@
     const dayLabel = (d) => new Date(d + 'T12:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric' });
     const jokers = h('section', { class: 'card streak-card' },
       h('h2', null, 'Serie & Joker'),
-      h('p', { class: 'muted' }, `Verpasst du einen Tag, springt automatisch ein Joker ein und deine Serie hält. Jeden Monat gibt es ${si.perMonth} neue, übrige verfallen. Joker-Tage halten die Serie, zählen aber nicht mit.`),
+      h('p', { class: 'muted' }, `Verpasst du einen Tag, kannst du danach einen Joker einsetzen, damit deine Serie hält – solange die Lücke bis gestern reicht. Jeden Monat gibt es ${si.perMonth} neue, übrige verfallen. Joker-Tage halten die Serie, zählen aber nicht mit.`),
+      jokerOffer(),
       h('ol', { class: 'joker-slots', 'aria-label': `Joker im ${monthName}: ${si.left} von ${si.perMonth} übrig` },
         Array.from({ length: si.perMonth }, (_, i) => {
           const used = i >= si.left ? usedDays[i - si.left] : null;

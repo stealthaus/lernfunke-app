@@ -13,6 +13,7 @@
  *  · Tagesaktivität act { 'YYYY-MM-DD': { reviews|lessons|perfect|games|dq|blitz: { [gerät]: n } } } – für
  *    Wochen-Quests und Tagesfrage. Zähler wie oben; blitz (Tagesbestwert) und dq (Tagesfrage: 1 falsch,
  *    2 richtig) zählen als Maximum statt Summe. Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
+ *  · Joker { 'YYYY-MM-DD': 'YYYY-MM-DD' } – gehaltener Tag → Einsatzdatum, frühestes Datum gewinnt.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
 (function () {
   'use strict';
@@ -76,6 +77,7 @@
     notes: {}, // Notiz-ID → { v: { kind, text, quote?, topic, where, hash, at, done? }, t }
     act: {}, // 'YYYY-MM-DD' → { reviews, lessons, perfect, games, dq, blitz } je Gerät
     quests: {}, // 'Montag der Woche|quest-id' → Datum, an dem die Quest geschafft wurde
+    jokers: {}, // 'YYYY-MM-DD' (gehaltener Tag) → Datum, an dem der Joker eingesetzt wurde
   });
   const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
@@ -143,6 +145,7 @@
       notes: both(a.notes, b.notes, lww),
       act: both(a.act, b.act, (x, y) => both(x, y, maxG)),
       quests: both(a.quests, b.quests, minStr),
+      jokers: both(a.jokers, b.jokers, minStr),
     };
     pruneDays(d);
     return clone(d);
@@ -155,6 +158,7 @@
     while (actKeys.length > KEEP_ACT_DAYS) delete d.act[actKeys.shift()];
     const cut = LA.addDays(LA.today(), -7 * KEEP_QUEST_WEEKS);
     Object.keys(d.quests).forEach((k) => k.slice(0, 10) < cut && delete d.quests[k]);
+    if (keys.length) Object.keys(d.jokers).forEach((k) => k < keys[0] && delete d.jokers[k]);
   }
 
   /* ---------- Abgeleiteter Zustand ----------
@@ -220,6 +224,7 @@
       // neueste zuerst
       act,
       quests: { ...d.quests },
+      jokers: { ...d.jokers },
       notes: Object.entries(live(d.notes)).map(([id, n]) => ({ id, ...n })).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)),
     };
   }
@@ -240,7 +245,7 @@
     for (const k in s.settings || {}) d.settings[k] = r0(s.settings[k]);
     d.lastTopic = r0(s.lastTopic || null);
     d.badges = { ...s.badges };
-    // Notizen, Tagesaktivität und Quests gab es in v1 noch nicht – bleiben leer
+    // Notizen, Tagesaktivität, Quests und Joker gab es in v1 noch nicht – bleiben leer
     for (const id in s.topics || {}) {
       const o = s.topics[id];
       const t = (d.topics[id] = freshTopic());
@@ -309,62 +314,64 @@
   }
 
   /* ---------- Streak: Tage in Folge mit XP, bis heute oder gestern – mit Jokern ----------
-   * Pro Kalendermonat gibt es JOKERS Joker. Eine Lücke (Tage ohne XP zwischen zwei Lerntagen oder
-   * vom letzten Lerntag bis gestern) wird automatisch überbrückt, wenn die Joker der betroffenen
-   * Monate für alle Tage der Lücke reichen – sonst reißt die Serie und kein Joker wird verbraucht.
-   * Joker-Tage halten die Serie, zählen aber nicht mit. Alles wird aus `days` abgeleitet:
-   * kein eigenes Feld, also nichts, was beim Sync zusammengeführt werden müsste. */
+   * Pro Kalendermonat gibt es JOKERS Joker. Joker setzt der Nutzer aktiv ein (useJoker): nur für die
+   * Lücke vom letzten gehaltenen Tag bis gestern, und nur, wenn die Joker der betroffenen Monate für
+   * alle Tage der Lücke reichen. Eingesetzte Joker stehen in `jokers` (Tag → Datum des Einsatzes).
+   * Joker-Tage halten die Serie, zählen aber nicht mit. Nichts wird rückwirkend überbrückt. */
   const JOKERS = 3;
   const monthOf = (d) => d.slice(0, 7);
   let streakCache = null;
   function streakInfo() {
     const today = LA.today();
     if (streakCache && streakCache.state === state && streakCache.today === today) return streakCache.info;
-    const learned = Object.keys(state.days).filter((d) => state.days[d] > 0 && d <= today).sort();
-    const used = {}; // 'YYYY-MM' → verbrauchte Joker
-    const jokerDays = [];
+    const learned = (d) => state.days[d] > 0;
+    const kept = [...new Set([...Object.keys(state.days).filter(learned), ...Object.keys(state.jokers)])]
+      .filter((d) => d <= today)
+      .sort();
+    const jokerDays = kept.filter((d) => !learned(d));
+    const run = {}; // Tag → Länge der Serie bis zu diesem Tag
     let days = 0;
     let best = 0;
     let last = null;
-    /** Lücke last+1 … end überbrücken, wenn möglich (Joker werden dann verbraucht) */
-    const bridge = (end) => {
-      const gap = [];
-      for (let d = LA.addDays(last, 1); d <= end; d = LA.addDays(d, 1)) gap.push(d);
-      const need = {};
-      gap.forEach((d) => (need[monthOf(d)] = (need[monthOf(d)] || 0) + 1));
-      if (Object.keys(need).some((m) => (used[m] || 0) + need[m] > JOKERS)) return false;
-      for (const m in need) used[m] = (used[m] || 0) + need[m];
-      jokerDays.push(...gap);
-      return true;
-    };
-    for (const d of learned) {
-      days = last && (LA.addDays(last, 1) === d || bridge(LA.addDays(d, -1))) ? days + 1 : 1;
+    for (const d of kept) {
+      if (!last || LA.addDays(last, 1) !== d) days = 0;
+      if (learned(d)) days++;
+      run[d] = days;
       best = Math.max(best, days);
       last = d;
     }
     const yesterday = LA.addDays(today, -1);
-    if (last && last < yesterday && !bridge(yesterday)) days = 0;
-    const left = JOKERS - (used[monthOf(today)] || 0);
+    if (last && last < yesterday) days = 0;
+    const used = (m) => Object.keys(state.jokers).filter((d) => monthOf(d) === m).length;
+    // Angebot: gestern nicht gehalten, davor lief eine Serie, die Joker reichen für die ganze Lücke
+    let offer = null;
+    const before = kept.filter((d) => d < today).pop();
+    if (before && before < yesterday && run[before] > 0) {
+      const gap = [];
+      for (let d = LA.addDays(before, 1); d <= yesterday; d = LA.addDays(d, 1)) gap.push(d);
+      const need = {};
+      gap.forEach((d) => (need[monthOf(d)] = (need[monthOf(d)] || 0) + 1));
+      if (Object.keys(need).every((m) => used(m) + need[m] <= JOKERS)) offer = { gap, saves: run[before] + (learned(today) ? 1 : 0) };
+    }
     const info = {
-      days, best, left, perMonth: JOKERS,
-      jokerDays, // alle überbrückten Tage, älteste zuerst
-      learnedToday: !!state.days[today],
-      savedYesterday: days > 0 && jokerDays.includes(yesterday),
+      days, best, left: JOKERS - used(monthOf(today)), perMonth: JOKERS,
+      jokerDays, // alle eingesetzten Joker-Tage, älteste zuerst
+      learnedToday: learned(today),
+      offer, // { gap: [Tage], saves: Serienlänge danach } oder null
     };
     streakCache = { state, today, info };
     return info;
   }
   const streak = () => streakInfo().days;
 
-  /** Neue Joker-Einsätze seit dem letzten Aufruf (je Gerät) – für einen Hinweis beim Start */
-  const KEY_JOKER_SEEN = 'lernfunke.jokerSeen';
-  function newJokerDays() {
-    const info = streakInfo();
-    // ohne Merker (neues Gerät, erster Start) nur die letzte Woche – alte Einsätze sind keine Nachricht
-    const seen = maxStr(readLS(KEY_JOKER_SEEN), LA.addDays(LA.today(), -8));
-    const news = info.days ? info.jokerDays.filter((d) => d > seen) : [];
-    if (info.jokerDays.length) writeLS(KEY_JOKER_SEEN, info.jokerDays[info.jokerDays.length - 1]);
-    return news;
+  /** Joker für die Lücke bis gestern einsetzen (nur, wenn streakInfo().offer es anbietet) */
+  function useJoker() {
+    const { offer } = streakInfo();
+    if (!offer) return false;
+    offer.gap.forEach((d) => (doc.jokers[d] = LA.today()));
+    save();
+    checkBadges();
+    return true;
   }
 
   /* ---------- XP ---------- */
@@ -663,7 +670,8 @@
     { id: 'goal', emoji: '🎯', title: 'Zielstrebig', desc: 'Tagesziel erreicht' },
     { id: 'streak3', emoji: '🔥', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3 },
     { id: 'streak7', emoji: '🏅', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
-    { id: 'joker', emoji: '🛟', title: 'Gerettet', desc: 'Ein Joker hat deine Serie gehalten', test: () => streakInfo().jokerDays.length > 0 },
+    // 'joker' hieß die alte Fassung, die rückwirkend vergeben wurde – bleibt im Dokument liegen, wird nicht mehr angezeigt
+    { id: 'joker-aktiv', emoji: '🛟', title: 'Gerettet', desc: 'Mit einem Joker deine Serie gehalten', test: (s) => Object.keys(s.jokers).length > 0 },
     { id: 'streak30', emoji: '📅', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
     { id: 'quests', emoji: '🗺️', title: 'Wochen-Champion', desc: 'Alle drei Wochen-Quests einer Woche geschafft' },
     { id: 'level5', emoji: '🚀', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
@@ -747,7 +755,7 @@
   LA.store = {
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
-    levelInfo, streak, streakInfo, newJokerDays, addXP, todayXP, topic, visit, lessonResult, best, testResult,
+    levelInfo, streak, streakInfo, useJoker, addXP, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer,

@@ -196,15 +196,6 @@
     refresh: render,
   };
 
-  /** Hat ein Joker seit dem letzten Öffnen die Serie gehalten, einmal Bescheid geben */
-  function announceJokers() {
-    const news = LA.store.newJokerDays();
-    if (!news.length) return;
-    const si = LA.store.streakInfo();
-    const who = news.length === 1 ? 'Ein Joker hat' : `${news.length} Joker haben`;
-    LA.fx.toast('Joker eingesetzt', `${who} deine Serie von ${LA.plural(si.days, 'Tag', 'Tagen')} gehalten. Diesen Monat noch ${si.left} übrig.`);
-  }
-
   /* ---------- Start ---------- */
   function init() {
     const app = document.getElementById('app');
@@ -217,7 +208,6 @@
       if (blocker) return main.replaceChildren(blocker.el);
       window.addEventListener('hashchange', () => render());
       render();
-      announceJokers();
       LA.challenges.check();
     });
   }

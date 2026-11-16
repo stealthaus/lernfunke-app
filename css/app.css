@@ -1244,6 +1244,34 @@ a.ch-row:hover {
   font-weight: 700;
   color: var(--accent-text);
 }
+/* Joker-Angebot (Startseite und Serie & Joker): Pastellfläche wie ein bereiter Joker, Knopf als Nebenaktion */
+.joker-offer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 14px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: var(--p1);
+  border: 2px solid var(--rule);
+  color: var(--text);
+}
+.joker-offer > .ic svg {
+  width: 26px;
+  height: 26px;
+}
+.joker-offer > p {
+  margin: 0;
+  max-width: var(--measure);
+}
+@media (max-width: 560px) {
+  .joker-offer {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .joker-offer > .btn {
+    grid-column: 1 / -1;
+  }
+}
 /* Serie & Joker: drei Felder je Monat – bereit = Pastellfläche, eingesetzt = gestrichelt mit Datum */
 .streak-card > p {
   max-width: var(--measure);
