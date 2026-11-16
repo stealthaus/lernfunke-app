@@ -30,6 +30,7 @@
       return cs && cs.due <= LA.today();
     }).length;
     const fresh = cards.filter((c) => !tState.cards[c.id]).length;
+    const mem = LA.challenges.memoryOf(id);
     const favN = LA.store.favCount(id);
 
     const cta = next
@@ -102,8 +103,8 @@
               h('span', { class: 'tag' }, `~${topic.lessons.reduce((a, l) => a + lessonMinutes(l), 0)} min`)),
             topic.intro ? h('div', { class: 'md th-intro', html: LA.md(topic.intro) }) : null)),
         h('section', { class: 'action-grid' },
-          action(`#/t/${id}/karten`, 'cards', 'Karteikarten', due ? `${due} fällig · ${fresh} neu` : `${cards.length} Karten · ${fresh} neu`, due || null),
-          action(`#/t/${id}/spiele`, 'gamepad', 'Spielhalle', 'Memory, Zuordnen, Blitzrunde'),
+          action(`#/t/${id}/karten`, 'cards', 'Karteikarten', (due ? `${due} fällig · ${fresh} neu` : `${cards.length} Karten · ${fresh} neu`) + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), due || null),
+          action(`#/t/${id}/spiele`, 'gamepad', 'Spielhalle', 'Zuordnen, Blitzrunde'),
           action(`#/t/${id}/test`, 'target', 'Abschlusstest',
             (tState.test ? `Bestwert ${Math.round(tState.test.best * 100)} %` : 'Gemischte Fragen aus allen Lektionen') +
             (favN ? ` · ${LA.plural(favN, 'Favorit', 'Favoriten')}` : '')),

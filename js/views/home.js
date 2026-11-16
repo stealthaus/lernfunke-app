@@ -65,6 +65,43 @@
       continueRow);
   }
 
+  /** Tagesfrage und Wochen-Quests als Fahrplan-Liste unter dem Kopf – geschafft = Mint mit ✓ */
+  function challengesSection() {
+    const dq = LA.challenges.daily();
+    const wk = LA.challenges.week();
+    const topic = dq.topicId && LA.catalogEntry(dq.topicId);
+    const daily = topic
+      ? h(dq.answered ? 'div' : 'a', { class: 'ch-row ch-daily' + (dq.answered ? ' done' : ''), href: dq.answered ? null : '#/tagesfrage' },
+        h('span', { class: 'ch-num' }, icon(dq.answered ? 'check' : 'bulb')),
+        h('span', { class: 'ch-text' },
+          h('strong', null, 'Tagesfrage'),
+          h('span', { class: 'ch-sub' }, dq.answered
+            ? `${dq.correct ? 'Richtig beantwortet' : 'Beantwortet'} – morgen gibt es die nächste.`
+            : `Aus „${topic.title}“ – eine Frage aus einer Lektion, die schon etwas zurückliegt.`)),
+        h('span', { class: 'ch-state' }, dq.answered ? 'Erledigt' : `+${10 + dq.bonus} XP`, dq.answered ? null : icon('arrowRight')))
+      : null;
+    const quests = wk.list.map((q, i) => {
+      const done = q.done || q.reached;
+      return h('li', { class: 'ch-row' + (done ? ' done' : '') },
+        h('span', { class: 'ch-num' }, done ? icon('check') : String(i + 1).padStart(2, '0')),
+        h('span', { class: 'ch-text' },
+          h('strong', null, q.text),
+          h('span', { class: 'ch-meta' },
+            h('span', { class: 'mini-bar', role: 'progressbar', 'aria-label': q.text, 'aria-valuenow': String(q.value), 'aria-valuemax': String(q.target) },
+              h('div', { style: { width: (q.value / q.target) * 100 + '%' } })),
+            `${q.value} / ${q.target}`)),
+        h('span', { class: 'ch-state' }, done ? 'Geschafft' : `+${wk.questXP} XP`));
+    });
+    const allDone = wk.list.every((q) => q.done || q.reached);
+    return h('section', { class: 'challenges' },
+      h('div', { class: 'section-head' }, h('h2', null, 'Heute & diese Woche')),
+      daily,
+      h('div', { class: 'ch-kicker' },
+        h('strong', null, 'Wochen-Quests'),
+        h('span', null, allDone ? `alle geschafft · +${wk.bonusXP} XP Bonus` : `noch ${LA.plural(wk.daysLeft, 'Tag', 'Tage')} · alle drei: +${wk.bonusXP} XP Bonus`)),
+      h('ol', { class: 'ch-list' }, quests));
+  }
+
   function topicCard(t) {
     const p = LA.topicProgress(t.id);
     const sr = LA.seriesOf(t.id);
@@ -300,6 +337,7 @@
     return {
       el: h('div', { class: 'page home' },
         hero(continueCard),
+        challengesSection(),
         seriesWrap,
         h('section', null,
           h('div', { class: 'section-head' },
@@ -341,6 +379,81 @@
   }
 
   /* ---------- Profil ---------- */
+  const shortDate = (d) => new Date(d + 'T12:00').toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+  /** Jahres-Heatmap: 53 Wochen × 7 Tage, Stufen nach XP im Verhältnis zum Tagesziel, Joker gestrichelt.
+   *  Stufe steht zusätzlich im title und in der Zusammenfassung – nicht nur als Graustufe. */
+  function yearHeatmap(st, si) {
+    const today = LA.today();
+    const start = LA.addDays(LA.challenges.weekStart(today), -52 * 7);
+    const jokers = new Set(si.jokerDays);
+    const level = (v) => (!v ? 0 : v < st.goal / 2 ? 1 : v < st.goal ? 2 : v < st.goal * 2 ? 3 : 4);
+    const WEEKS = 53;
+    const grid = h('div', { class: 'hm-grid', 'aria-hidden': 'true', style: { '--weeks': WEEKS } });
+    // Kopfzeile: Monatsname über der Woche, in der der Monat beginnt
+    grid.append(h('span'));
+    for (let w = 0; w < WEEKS; w++) {
+      const first = LA.addDays(start, w * 7);
+      const monthStart = Array.from({ length: 7 }, (_, d) => LA.addDays(first, d)).find((d) => d.endsWith('-01'));
+      grid.append(h('span', { class: 'hm-month' }, monthStart || w === 0
+        ? new Date((monthStart || first) + 'T12:00').toLocaleDateString('de-DE', { month: 'short' }).replace('.', '') : ''));
+    }
+    let learned = 0;
+    let hit = 0;
+    ['Mo', '', 'Mi', '', 'Fr', '', 'So'].forEach((label, d) => {
+      grid.append(h('span', { class: 'hm-wd' }, label));
+      for (let w = 0; w < WEEKS; w++) {
+        const day = LA.addDays(start, w * 7 + d);
+        if (day > today) {
+          grid.append(h('span', { class: 'hm-cell future' }));
+          continue;
+        }
+        const v = st.days[day] || 0;
+        if (v) learned++;
+        if (v >= st.goal) hit++;
+        const j = jokers.has(day);
+        grid.append(h('span', { class: `hm-cell l${level(v)}` + (j ? ' hm-joker' : '') + (day === today ? ' today' : ''), title: `${shortDate(day)}: ${j ? 'Joker eingesetzt' : v + ' XP'}` }));
+      }
+    });
+    const scroller = h('div', { class: 'hm-scroll' }, grid);
+    // Mobil: die jüngsten Wochen zeigen (rechts)
+    requestAnimationFrame(() => (scroller.scrollLeft = scroller.scrollWidth));
+    const sample = (cls, label) => h('span', { class: 'hm-key' }, h('span', { class: 'hm-cell ' + cls }), label);
+    return h('section', { class: 'card heatmap' },
+      h('h2', null, 'Dein Jahr'),
+      h('p', { class: 'muted' }, `${LA.plural(learned, 'Lerntag', 'Lerntage')} in den letzten 12 Monaten, davon ${hit} mit erreichtem Tagesziel · ${LA.plural(si.jokerDays.length, 'Joker', 'Joker')} eingesetzt.`),
+      scroller,
+      h('div', { class: 'hm-legend' },
+        sample('l0', 'nichts'), sample('l1', 'unter ½ Ziel'), sample('l2', 'unter Ziel'), sample('l3', 'Ziel erreicht'), sample('l4', 'doppeltes Ziel'), sample('l0 hm-joker', 'Joker')));
+  }
+
+  /** Gedächtnis-Wert: Gesamtwert und je Thema (schwächste zuerst, mit Link zu den Karteikarten) */
+  function memorySection() {
+    const mem = LA.challenges.memoryAll();
+    const pct = (x) => Math.round(x * 100) + ' %';
+    const row = (x) => {
+      const t = LA.catalogEntry(x.id);
+      return h('li', null, h('a', { class: 'mem-row', href: `#/t/${x.id}/karten` },
+        h('span', { class: 'mem-title' }, t.title),
+        h('span', { class: 'mini-bar', role: 'progressbar', 'aria-label': `Gedächtnis-Wert ${t.title}`, 'aria-valuenow': String(Math.round(x.pct * 100)), 'aria-valuemax': '100' },
+          h('div', { style: { width: x.pct * 100 + '%' } })),
+        h('span', { class: 'mem-pct' }, pct(x.pct))));
+    };
+    const SHOW = 6;
+    return h('section', { class: 'card memory' },
+      h('h2', null, 'Gedächtnis-Wert'),
+      h('p', { class: 'muted' }, 'Wie weit deine Karteikarten im Kasten sind: Fach 5 zählt voll, Fach 1 und nie geübte Karten zählen nichts. Lange überfällige Karten rutschen ein Fach ab – der Wert steigt nur, wenn du wiederholst.'),
+      mem.topics.length
+        ? [
+          h('div', { class: 'mem-total' }, h('span', { class: 'mem-big' }, pct(mem.pct)), h('span', { class: 'muted' }, `über ${LA.plural(mem.topics.length, 'Thema', 'Themen')} mit geübten Karten`)),
+          h('div', { class: 'mem-head muted' }, 'Am wackeligsten zuerst'),
+          h('ol', { class: 'mem-list' }, mem.topics.slice(0, SHOW).map(row)),
+          mem.topics.length > SHOW
+            ? h('details', { class: 'mem-more' }, h('summary', null, `Alle ${mem.topics.length} Themen`), h('ol', { class: 'mem-list' }, mem.topics.slice(SHOW).map(row)))
+            : null]
+        : h('p', null, 'Noch keine Karteikarten geübt. Sobald du Karten wiederholst, siehst du hier, wie viel sitzt.'));
+  }
+
   LA.views.profile = () => {
     const st = LA.store.get();
     const lvl = LA.store.levelInfo();
@@ -439,6 +552,8 @@
             [[LA.store.streak(), 'Tage Serie'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt'], [st.stats.games, 'Spiele']]
               .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n)))))),
         jokers,
+        yearHeatmap(st, si),
+        memorySection(),
         h('section', { class: 'card' }, h('h2', null, 'Die letzten 14 Tage'), chart),
         h('section', null, h('h2', null, 'Abzeichen'), badges),
         h('section', { class: 'card settings' },

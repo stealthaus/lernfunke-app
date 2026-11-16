@@ -1,4 +1,4 @@
-/* Übungsmodi: Karteikarten (Leitner, pro Thema oder Lernreise, bearbeitbar), Spielhalle (Memory, Zuordnen, Blitzrunde). */
+/* Übungsmodi: Karteikarten (Leitner, pro Thema oder Lernreise, bearbeitbar), Spielhalle (Zuordnen, Blitzrunde). */
 (function () {
   'use strict';
   const LA = window.LA;
@@ -504,9 +504,51 @@
       h('div', { class: 'ds-list card' }, rows));
   }
 
+  /* ---------- Tagesfrage ----------
+   * Eine Frage pro Tag aus einer früher geschafften Lektion (js/core/challenges.js). Richtig: doppelte XP.
+   * Zählt einmal pro Tag – danach zeigt die Seite nur noch, dass sie erledigt ist. */
+  LA.views.daily = async () => {
+    const dq = LA.challenges.daily();
+    const q = dq.answered ? null : await LA.challenges.dailyQuestion();
+    if (!q) {
+      return {
+        el: h('div', { class: 'page' },
+          h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
+          h('h1', null, 'Tagesfrage'),
+          h('p', { class: 'muted' }, dq.answered
+            ? 'Heute schon beantwortet – morgen gibt es die nächste.'
+            : 'Sobald du eine Lektion geschafft hast, gibt es hier ab dem nächsten Tag jeden Tag eine Frage daraus.'),
+          h('a', { class: 'btn btn-soft', href: '#/' }, 'Zur Startseite')),
+      };
+    }
+    LA.current = { topic: q.topic };
+    const player = LA.createPlayer({
+      topic: q.topic,
+      steps: [q.step],
+      showTopic: true,
+      onExit: () => LA.router.go('#/'),
+      result(sum) {
+        const correct = !!(sum.results[0] && sum.results[0].correct);
+        LA.store.dailyAnswer(correct);
+        if (correct) sum.gain(dq.bonus);
+        return {
+          emoji: correct ? '💡' : '📚',
+          title: correct ? 'Sitzt!' : 'Fast – jetzt weißt du es',
+          subtitle: correct ? 'Doppelte XP für die Tagesfrage. Morgen gibt es die nächste.' : 'Lies dir die Erklärung oben noch einmal durch. Morgen gibt es eine neue Frage.',
+          stats: [{ label: 'XP', value: '+' + sum.xp }],
+          noConfetti: !correct,
+          actions: [
+            { label: 'Zur Startseite', primary: true, href: '#/' },
+            { label: 'Zum Thema', href: `#/t/${q.topic.id}` },
+          ],
+        };
+      },
+    });
+    return { el: h('div', { class: 'player-wrap' }, player.el), focus: true, destroy: () => player.destroy() };
+  };
+
   /* ---------- Spielhalle ---------- */
   const GAMES = {
-    memory: { icon: '🧩', title: 'Memory', desc: 'Decke Paare aus Begriff und Erklärung auf – mit möglichst wenigen Zügen.', min: 3 },
     zuordnen: { icon: '🔗', title: 'Zuordnen', desc: 'Verbinde Begriffe mit ihren Bedeutungen – so schnell und fehlerfrei wie möglich.', min: 3 },
     blitz: { icon: '⚡', title: 'Blitzrunde', desc: '60 Sekunden: Stimmt die Aussage oder nicht? Serien geben Multiplikatoren.', min: 6 },
   };
@@ -516,9 +558,8 @@
     const t = LA.store.topic(id);
     const pairs = LA.topicPairs(topic);
     const statements = LA.topicStatements(topic);
-    const avail = { memory: pairs.length, zuordnen: pairs.length, blitz: statements.length };
+    const avail = { zuordnen: pairs.length, blitz: statements.length };
     const bestLabel = {
-      memory: t.games.memory != null ? `Rekord: ${t.games.memory} Züge` : null,
       zuordnen: t.games.zuordnen != null ? `Rekord: ${LA.formatTime(t.games.zuordnen)}` : null,
       blitz: t.games.blitz != null ? `Rekord: ${t.games.blitz} Punkte` : null,
     };
@@ -554,10 +595,8 @@
     let player;
     const start = () => {
       if (player) player.destroy();
-      const pairs = LA.sample(LA.topicPairs(topic), game === 'memory' ? 6 : 6);
-      const step = game === 'memory'
-        ? { type: 'memory', title: 'Memory', pairs, _key: 'memory' }
-        : { type: 'match', title: 'Zuordnen auf Zeit', pairs, _key: 'match' };
+      const pairs = LA.sample(LA.topicPairs(topic), 6);
+      const step = { type: 'match', title: 'Zuordnen auf Zeit', pairs, _key: 'match' };
       player = LA.createPlayer({
         topic,
         steps: [step],
@@ -565,16 +604,9 @@
         result(sum) {
           const raw = sum.results[0] ? sum.results[0].raw : {};
           const skipped = !sum.results[0] || sum.results[0].score === 0 && !raw.text;
-          let isRecord = false;
-          let stats;
-          if (game === 'memory') {
-            isRecord = !skipped && LA.store.best(id, 'memory', raw.moves, true);
-            stats = [{ label: 'Züge', value: raw.moves || '–' }, { label: 'Rekord', value: LA.store.topic(id).games.memory || '–' }];
-          } else {
-            isRecord = !skipped && LA.store.best(id, 'zuordnen', sum.time, true);
-            const bestT = LA.store.topic(id).games.zuordnen;
-            stats = [{ label: 'Zeit', value: LA.formatTime(sum.time) }, { label: 'Rekord', value: bestT ? LA.formatTime(bestT) : '–' }];
-          }
+          const isRecord = !skipped && LA.store.best(id, 'zuordnen', sum.time, true);
+          const bestT = LA.store.topic(id).games.zuordnen;
+          const stats = [{ label: 'Zeit', value: LA.formatTime(sum.time) }, { label: 'Rekord', value: bestT ? LA.formatTime(bestT) : '–' }];
           stats.push({ label: 'XP', value: '+' + sum.xp });
           return {
             emoji: isRecord ? '🏆' : GAMES[game].icon,

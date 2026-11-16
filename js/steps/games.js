@@ -1,4 +1,4 @@
-/* Spielerische Schritt-Typen: match, memory, flashcards (melden sich selbst fertig)
+/* Spielerische Schritt-Typen: match, flashcards (melden sich selbst fertig)
  * und hotspots (Grafik erkunden). Werden auch in der Spielhalle wiederverwendet. */
 (function () {
   'use strict';
@@ -147,69 +147,6 @@
           h('div', { class: 'match-grid' },
             h('div', { class: 'match-col' }, left.map((it) => mk('l', it))),
             h('div', { class: 'match-col' }, right.map((it) => mk('r', it))))),
-      };
-    },
-  });
-
-  /* ---------- memory: Klassisches Memory mit Begriffspaaren ---------- */
-  LA.defineStep('memory', {
-    mode: 'game',
-    label: 'Memory',
-    render(step, ctx) {
-      const pairs = step.pairs;
-      const n = pairs.length;
-      const cards = LA.shuffle(pairs.flatMap((p, i) => [{ text: p[0], pair: i, side: 0 }, { text: p[1], pair: i, side: 1 }]));
-      let open = [];
-      let moves = 0;
-      let found = 0;
-      let busy = false;
-      const status = h('div', { class: 'game-status' });
-      const updateStatus = () => (status.textContent = `${LA.plural(moves, 'Zug', 'Züge')} · ${found} / ${n} Paare`);
-      updateStatus();
-
-      cards.forEach((c) => {
-        c.el = h('button', { class: 'mem-card', type: 'button', 'aria-label': 'Verdeckte Karte' },
-          h('div', { class: 'mem-inner' },
-            h('div', { class: 'mem-face mem-front' }, LA.icon('spark')),
-            h('div', { class: `mem-face mem-back side-${c.side}`, html: LA.mdi(c.text) })));
-        c.el.addEventListener('click', () => flip(c));
-      });
-
-      function flip(c) {
-        if (busy || c.done || open.includes(c)) return;
-        c.el.classList.add('open');
-        open.push(c);
-        LA.fx.sound.flip();
-        if (open.length < 2) return;
-        moves++;
-        const [a, b] = open;
-        if (a.pair === b.pair) {
-          a.done = b.done = true;
-          setTimeout(() => [a, b].forEach((x) => x.el.classList.add('done')), 250);
-          open = [];
-          found++;
-          LA.fx.sound.good();
-          if (found === n) {
-            const extra = moves - n;
-            ctx.finish({ score: LA.clamp(1 - extra / (n * 2), 0.2, 1), moves, text: `Geschafft in ${moves} Zügen${extra === 0 ? ' – perfekt!' : '.'}` });
-          }
-        } else {
-          busy = true;
-          setTimeout(() => {
-            a.el.classList.remove('open');
-            b.el.classList.remove('open');
-            open = [];
-            busy = false;
-          }, 1000);
-        }
-        updateStatus();
-      }
-
-      return {
-        el: h('div', { class: 'step step-memory' },
-          LA.ui.stepHead(step, ctx, { kicker: 'Memory', text: step.prompt || 'Decke immer zwei Karten auf und finde die zusammengehörigen Paare.' }),
-          status,
-          h('div', { class: 'mem-grid', style: { '--cols': n <= 4 ? 4 : n <= 6 ? 4 : 5 } }, cards.map((c) => c.el))),
       };
     },
   });

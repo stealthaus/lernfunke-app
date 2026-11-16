@@ -1054,6 +1054,99 @@ a.sc-due {
   margin-bottom: 2px;
 }
 
+/* ---------- Tagesfrage & Wochen-Quests (Startseite) ----------
+   Fahrplan-Zeilen: Nummer · Aufgabe mit Balken · Lohn. Geschafft = Mint mit ✓ und „Geschafft“. */
+.challenges {
+  margin-top: 8px;
+}
+.ch-row {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 14px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+.ch-row.done {
+  background: var(--p2);
+}
+a.ch-row:hover {
+  background: var(--surface-2);
+}
+.ch-daily {
+  border: 2px solid var(--rule);
+  margin-bottom: 20px;
+}
+.ch-num {
+  display: inline-flex;
+  font-weight: 700;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.ch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ch-sub {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.ch-row.done .ch-sub {
+  color: var(--text);
+}
+.ch-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ch-meta .mini-bar {
+  flex: 0 1 180px;
+  min-width: 40px;
+}
+.ch-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.ch-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--rule);
+  font-size: 0.92rem;
+}
+.ch-kicker span {
+  color: var(--muted);
+}
+.ch-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 560px) {
+  .ch-row {
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    gap: 4px 10px;
+    padding: 8px;
+  }
+  .ch-state {
+    font-size: 0.82rem;
+  }
+}
+
 /* ---------- Profil ---------- */
 .profile-hero {
   border-top: 8px solid var(--rule);
@@ -1231,6 +1324,138 @@ a.sc-due {
   .joker .ic {
     grid-row: auto;
   }
+}
+/* Jahres-Heatmap: Graustufen nach XP (mehr = dunkler, im Dunkelmodus heller), Joker gestrichelt */
+.heatmap > p {
+  margin: 4px 0 12px;
+  max-width: var(--measure);
+}
+.hm-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.hm-grid {
+  --cell: 11px;
+  display: grid;
+  grid-template-columns: 1.6rem repeat(var(--weeks), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: 3px;
+  width: max-content;
+}
+.hm-month,
+.hm-wd {
+  font-size: 0.68rem;
+  line-height: var(--cell);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: visible;
+}
+.hm-cell {
+  display: block;
+  width: var(--cell);
+  height: var(--cell);
+  background: var(--surface-2);
+}
+.hm-cell.l1 { background: color-mix(in srgb, var(--text) 22%, var(--bg)); }
+.hm-cell.l2 { background: color-mix(in srgb, var(--text) 45%, var(--bg)); }
+.hm-cell.l3 { background: color-mix(in srgb, var(--text) 72%, var(--bg)); }
+.hm-cell.l4 { background: var(--text); }
+.hm-cell.hm-joker {
+  outline: 1px dashed var(--text);
+  outline-offset: -1px;
+}
+.hm-cell.today {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+.hm-cell.future {
+  background: transparent;
+}
+.hm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.hm-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hm-key .hm-cell {
+  --cell: 11px;
+}
+
+/* Gedächtnis-Wert: Gesamtzahl, darunter die Themen als Fahrplan-Zeilen (schwächste zuerst) */
+.memory > p {
+  margin: 4px 0 12px;
+  max-width: var(--measure);
+}
+.mem-total {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.mem-big {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.mem-head {
+  font-size: 0.85rem;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--rule);
+}
+.mem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mem-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(60px, 160px) 3.5rem;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+.mem-row:hover {
+  background: var(--surface-2);
+}
+.mem-title {
+  overflow-wrap: break-word;
+}
+.mem-pct {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 560px) {
+  .mem-row {
+    grid-template-columns: minmax(0, 1fr) 3.5rem;
+    gap: 6px 12px;
+    padding: 8px 0;
+  }
+  .mem-row .mini-bar {
+    grid-row: 2;
+  }
+  .mem-pct {
+    grid-row: 1 / span 2;
+  }
+}
+.mem-more summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
 }
 .badges {
   display: grid;

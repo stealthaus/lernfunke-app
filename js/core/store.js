@@ -10,6 +10,9 @@
  *  · Bestwerte (Sterne, Rekorde, Blitzrunde) – Maximum bzw. Minimum; Abzeichen – frühestes Datum.
  *  · Epoche { id, t }: Zurücksetzen und Importieren beginnen eine neue; die neuere ersetzt alles.
  *  · Notizen { [id]: { v, t } } – wie Einzelwerte; tools/notes.js liest und erledigt sie am Rechner.
+ *  · Tagesaktivität act { 'YYYY-MM-DD': { reviews|lessons|perfect|games|dq|blitz: { [gerät]: n } } } – für
+ *    Wochen-Quests und Tagesfrage. Zähler wie oben; blitz (Tagesbestwert) und dq (Tagesfrage: 1 falsch,
+ *    2 richtig) zählen als Maximum statt Summe. Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
 (function () {
   'use strict';
@@ -20,6 +23,9 @@
   const KEY_STALE = 'lernfunke.stale';
   const DEFAULT_SETTINGS = { theme: 'auto', sound: true, roundSize: 20 };
   const KEEP_DAYS = 400;
+  const KEEP_ACT_DAYS = 60; // Tagesaktivität braucht nur die laufende Woche (+ Puffer)
+  const KEEP_QUEST_WEEKS = 12;
+  const ACT_MAX = ['blitz', 'dq']; // Tagesaktivität: Maximum statt Summe
 
   const readLS = (key) => {
     try {
@@ -68,6 +74,8 @@
     badges: {},
     topics: {},
     notes: {}, // Notiz-ID → { v: { kind, text, quote?, topic, where, hash, at, done? }, t }
+    act: {}, // 'YYYY-MM-DD' → { reviews, lessons, perfect, games, dq, blitz } je Gerät
+    quests: {}, // 'Montag der Woche|quest-id' → Datum, an dem die Quest geschafft wurde
   });
   const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
@@ -133,6 +141,8 @@
       badges: both(a.badges, b.badges, minStr),
       topics: both(a.topics, b.topics, mergeTopic),
       notes: both(a.notes, b.notes, lww),
+      act: both(a.act, b.act, (x, y) => both(x, y, maxG)),
+      quests: both(a.quests, b.quests, minStr),
     };
     pruneDays(d);
     return clone(d);
@@ -141,6 +151,10 @@
   function pruneDays(d) {
     const keys = Object.keys(d.days).sort();
     while (keys.length > KEEP_DAYS) delete d.days[keys.shift()];
+    const actKeys = Object.keys(d.act).sort();
+    while (actKeys.length > KEEP_ACT_DAYS) delete d.act[actKeys.shift()];
+    const cut = LA.addDays(LA.today(), -7 * KEEP_QUEST_WEEKS);
+    Object.keys(d.quests).forEach((k) => k.slice(0, 10) < cut && delete d.quests[k]);
   }
 
   /* ---------- Abgeleiteter Zustand ----------
@@ -183,6 +197,11 @@
     }
     const days = {};
     for (const k in d.days) days[k] = sum(d.days[k]);
+    const act = {};
+    for (const k in d.act) {
+      act[k] = {};
+      for (const key in d.act[k]) act[k][key] = ACT_MAX.includes(key) ? Math.max(0, ...Object.values(d.act[k][key])) : sum(d.act[k][key]);
+    }
     return {
       xp: sum(d.xp),
       days,
@@ -199,12 +218,14 @@
       settings: { ...DEFAULT_SETTINGS, ...live(d.settings) },
       lastTopic: d.lastTopic.v,
       // neueste zuerst
+      act,
+      quests: { ...d.quests },
       notes: Object.entries(live(d.notes)).map(([id, n]) => ({ id, ...n })).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)),
     };
   }
 
   /* ---------- Alter Stand (v1, auch alte Sicherungsdateien) ---------- */
-  const LOWER_IS_BETTER = ['memory', 'zuordnen']; // Züge bzw. Sekunden
+  const LOWER_IS_BETTER = ['memory', 'zuordnen']; // Züge bzw. Sekunden (Memory gibt es nicht mehr – alte Sicherungen kennen es noch)
 
   function fromV1(s) {
     const d = fresh();
@@ -219,7 +240,7 @@
     for (const k in s.settings || {}) d.settings[k] = r0(s.settings[k]);
     d.lastTopic = r0(s.lastTopic || null);
     d.badges = { ...s.badges };
-    // Notizen gab es in v1 noch nicht – d.notes bleibt leer
+    // Notizen, Tagesaktivität und Quests gab es in v1 noch nicht – bleiben leer
     for (const id in s.topics || {}) {
       const o = s.topics[id];
       const t = (d.topics[id] = freshTopic());
@@ -264,6 +285,18 @@
 
   // Fehlende Felder ergänzen: Themen-Einträge aus älteren App-Fassungen kennen z. B. `labs` noch nicht
   const dt = (id) => (doc.topics[id] = { ...freshTopic(), ...doc.topics[id] });
+
+  /* ---------- Tagesaktivität (für Wochen-Quests und Tagesfrage) ---------- */
+  /** Zähler von heute erhöhen – oder bei ACT_MAX den Tageswert dieses Geräts anheben. Speichert nicht. */
+  function bump(key, n = 1) {
+    const t = LA.today();
+    const day = doc.act[t] || (doc.act[t] = {});
+    const g = day[key] || (day[key] = {});
+    if (ACT_MAX.includes(key)) g[device] = Math.max(g[device] || 0, n);
+    else inc(g, n);
+  }
+  /** Aktivität eines Tages (abgeleitet): { reviews, lessons, … } */
+  const activity = (day) => state.act[day] || {};
 
   /* ---------- Level ---------- */
   // Level n → n+1 braucht 100 + 50·(n−1) XP
@@ -376,7 +409,8 @@
     l.at = maxStr(l.at, LA.today());
     inc(l.runs);
     inc(doc.stats.lessons);
-    if (stars === 3) inc(doc.stats.perfect);
+    bump('lessons');
+    if (stars === 3) (inc(doc.stats.perfect), bump('perfect'));
     save();
     checkBadges();
     return !prev;
@@ -389,6 +423,7 @@
     const better = !prev || (lowerIsBetter ? value < prev.v : value > prev.v);
     if (better) t.games[key] = { v: value, lo: !!lowerIsBetter };
     inc(doc.stats.games);
+    bump('games');
     save();
     return better && !!prev;
   }
@@ -490,6 +525,7 @@
     const box = known ? Math.min(5, (prev ? prev.box : 1) + 1) : 1;
     dt(topicId).cards[cardId] = reg({ box, due: LA.addDays(LA.today(), INTERVALS[box]), n: (prev ? prev.n : 0) + 1 });
     inc(doc.stats.reviews);
+    bump('reviews');
     save();
     checkBadges();
     return box;
@@ -602,6 +638,24 @@
     save();
   }
 
+  /* ---------- Wochen-Quests & Tagesfrage ----------
+   * Welche Quests gelten und wann sie geschafft sind, steht in js/core/challenges.js. Hier nur das
+   * Abhaken: einmal je Woche und Quest, die XP-Belohnung gibt es mit dem Abhaken. */
+  function claimQuest(key, xp) {
+    if (state.quests[key]) return false;
+    doc.quests[key] = LA.today();
+    save();
+    addXP(xp);
+    return true;
+  }
+  const questDone = (key) => state.quests[key] || null;
+
+  /** Tagesfrage beantwortet (zählt einmal pro Tag; richtig gewinnt über falsch) */
+  function dailyAnswer(correct) {
+    bump('dq', correct ? 2 : 1);
+    save();
+  }
+
   /* ---------- Abzeichen ---------- */
   const BADGES = [
     { id: 'first', emoji: '✨', title: 'Erster Funke', desc: 'Erste Lektion abgeschlossen', test: (s) => s.stats.lessons >= 1 },
@@ -611,6 +665,7 @@
     { id: 'streak7', emoji: '🏅', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
     { id: 'joker', emoji: '🛟', title: 'Gerettet', desc: 'Ein Joker hat deine Serie gehalten', test: () => streakInfo().jokerDays.length > 0 },
     { id: 'streak30', emoji: '📅', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
+    { id: 'quests', emoji: '🗺️', title: 'Wochen-Champion', desc: 'Alle drei Wochen-Quests einer Woche geschafft' },
     { id: 'level5', emoji: '🚀', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
     { id: 'level10', emoji: '🌟', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
     { id: 'cards50', emoji: '🃏', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
@@ -635,10 +690,9 @@
   }
 
   function setBlitz(score) {
-    if (score > doc.stats.blitzBest) {
-      doc.stats.blitzBest = score;
-      save();
-    }
+    if (score > doc.stats.blitzBest) doc.stats.blitzBest = score;
+    bump('blitz', score);
+    save();
     checkBadges();
   }
 
@@ -696,7 +750,7 @@
     levelInfo, streak, streakInfo, newJokerDays, addXP, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
-    notes, openNotes, addNote, updateNote, deleteNote,
+    notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer,
     BADGES, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,
     doc: () => doc, applyDoc, merge, canon, device,

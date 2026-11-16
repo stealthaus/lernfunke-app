@@ -19,7 +19,7 @@
 
   LA.catalogEntry = (id) => LA.catalog.find((t) => t.id === id);
 
-  /** Erzeugte Metadaten (tools/meta.js): { catalog: hash, topics: { id: { h: hash, l: [[lessonId, titel], …] } } } */
+  /** Erzeugte Metadaten (tools/meta.js): { catalog: hash, topics: { id: { h: hash, l: [[lessonId, titel], …], c: Kartenzahl } } } */
   LA.meta = { catalog: null, topics: {} };
   LA.registerMeta = (m) => {
     LA.meta = m && m.topics ? m : { catalog: null, topics: {} };
@@ -131,9 +131,10 @@
 
   /** Prüfbare Schritt-Typen: landen im Test und lassen sich als Favorit markieren */
   const TESTABLE = ['quiz', 'truefalse', 'cloze', 'order', 'categorize', 'estimate', 'codebug'];
-  /** Offene Fragen (think) und Paar-Spiele (match, memory) lassen sich auch merken – in Tests kommen sie nur als Favorit */
-  const FAVABLE = [...TESTABLE, 'think', 'match', 'memory'];
+  /** Offene Fragen (think) und Paar-Spiele (match) lassen sich auch merken – in Tests kommen sie nur als Favorit */
+  const FAVABLE = [...TESTABLE, 'think', 'match'];
   LA.testOnlyAsFav = (type) => FAVABLE.includes(type) && !TESTABLE.includes(type);
+  LA.isTestable = (type) => TESTABLE.includes(type);
 
   /** Stabile Fragen-ID aus dem Fragetext – übersteht Umsortieren und geänderte Antwortoptionen.
    *  Paare ohne Aufgabentext erkennt man an ihren linken Begriffen. */
@@ -256,7 +257,7 @@
     LA.store.setting('cardsOff', all);
   };
 
-  /** Begriffspaare für Memory & Zuordnen (bevorzugt kurze Definitionen) */
+  /** Begriffspaare für Zuordnen (bevorzugt kurze Definitionen) */
   LA.topicPairs = (topic) => {
     const pairs = topic.glossary.map((g) => [g.term, g.short || g.def]);
     (topic.pairs || []).forEach((p) => pairs.push(p));

@@ -22,6 +22,7 @@
     [/^\/r\/([^/]+)\/labs$/, 'labs', ['seriesId']],
     [/^\/labs$/, 'labs', []],
     [/^\/notizen$/, 'notes', []],
+    [/^\/tagesfrage$/, 'daily', []],
   ];
 
   const main = h('main', { id: 'main' });
@@ -217,6 +218,7 @@
       window.addEventListener('hashchange', () => render());
       render();
       announceJokers();
+      LA.challenges.check();
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
