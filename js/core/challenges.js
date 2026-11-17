@@ -122,10 +122,18 @@
     return o;
   }
 
-  /** Thema der heutigen Tagesfrage – oder null, wenn noch keine Lektion (vor heute) geschafft ist */
+  /** Lernreisen, die der Nutzer von der Tagesfrage ausgenommen hat (Einstellung dailySkip: Reise-IDs) */
+  const dailySkipped = (topicId) => {
+    const skip = LA.store.setting('dailySkip') || [];
+    return skip.length > 0 && LA.series.some((sr) => skip.includes(sr.id) && sr.topics.includes(topicId));
+  };
+
+  /** Thema der heutigen Tagesfrage – oder null, wenn noch keine Lektion (vor heute) geschafft ist
+   *  bzw. alle Themen mit geschafften Lektionen in ausgenommenen Lernreisen liegen */
   function dailyTopicId() {
     const today = LA.today();
     const cands = LA.catalog
+      .filter((t) => !dailySkipped(t.id))
       .map((t) => {
         const done = doneBefore(t.id, today);
         const ats = Object.values(done);

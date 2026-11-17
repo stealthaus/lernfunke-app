@@ -148,6 +148,12 @@
   function setArchived(sr, on) {
     LA.store.setting('seriesArchived', on ? [...archivedSeries(), sr.id] : archivedSeries().filter((x) => x !== sr.id));
   }
+  /* Lernreisen von der Tagesfrage ausnehmen (Einstellung dailySkip, wird in LA.challenges ausgewertet) */
+  const dailySkip = () => LA.store.setting('dailySkip') || [];
+  const inDaily = (sr) => !dailySkip().includes(sr.id);
+  function setInDaily(sr, on) {
+    LA.store.setting('dailySkip', on ? dailySkip().filter((x) => x !== sr.id) : [...dailySkip(), sr.id]);
+  }
   /** Ohne eigene Wahl ist nur die Reise offen, in der du zuletzt gelernt hast */
   function isOpen(sr) {
     const saved = (LA.store.setting('seriesOpen') || {})[sr.id];
@@ -174,8 +180,9 @@
   }
 
   /** Lernreise: Themen als nummerierte Stationen, die nächste offene ist hervorgehoben.
-   *  Zugeklappt bleibt nur die Kopfzeile mit der nächsten Station. onArchive: Reise wurde (ent)archiviert */
-  function seriesCard(sr, onArchive) {
+   *  Zugeklappt bleibt nur die Kopfzeile mit der nächsten Station. onArchive: Reise wurde (ent)archiviert,
+   *  onDaily: Reise wurde in die Tagesfrage aufgenommen oder aus ihr genommen */
+  function seriesCard(sr, onArchive, onDaily) {
     const stations = sr.topics.map((id) => LA.catalogEntry(id)).filter(Boolean);
     const progs = stations.map((t) => LA.topicProgress(t.id));
     const done = progs.reduce((a, p) => a + p.done, 0);
@@ -231,6 +238,22 @@
       onArchive();
     });
 
+    // Schalter mit Text (an/aus), nicht nur per Farbe; aria-pressed für Screenreader
+    const dailyBtn = h('button', { class: 'btn btn-ghost sc-daily', type: 'button', title: 'Soll die Tagesfrage auch aus dieser Lernreise kommen?' });
+    const paintDaily = () => {
+      const on = inDaily(sr);
+      dailyBtn.setAttribute('aria-pressed', String(on));
+      dailyBtn.replaceChildren(icon(on ? 'bulb' : 'eyeOff'), on ? 'Tagesfrage: an' : 'Tagesfrage: aus');
+    };
+    paintDaily();
+    dailyBtn.addEventListener('click', () => {
+      const on = !inDaily(sr);
+      setInDaily(sr, on);
+      paintDaily();
+      LA.fx.toast(on ? 'Wieder in der Tagesfrage' : 'Aus der Tagesfrage genommen', on ? sr.title : 'Karteikarten, Tests und Quests bleiben, nur die Tagesfrage kommt nicht mehr aus dieser Reise.');
+      onDaily();
+    });
+
     card.append(head, h('div', { class: 'sc-detail' },
       h('ol', { class: 'sc-stations' }, stations.map((t, i) => {
         const p = progs[i];
@@ -255,7 +278,7 @@
         favN
           ? h('a', { class: 'btn btn-soft sc-fav', href: `#/r/${sr.id}/test?nur=favoriten` }, icon('heart'), 'Favoriten-Test', h('span', { class: 'sc-count' }, favN))
           : h('span', { class: 'sc-hint muted' }, icon('heart'), 'Markiere Fragen mit dem Herz – dann kannst du sie hier gesammelt testen.'),
-        archiveBtn)));
+        h('span', { class: 'sc-manage' }, dailyBtn, archiveBtn))));
     return card;
   }
 
@@ -325,6 +348,14 @@
       setTimeout(() => LA.loadTopic(last.id).catch(() => {}), 300);
     }
 
+    // Tagesfrage und Quests: neu aufbauen, wenn eine Reise in die Tagesfrage kommt oder herausfällt
+    let chEl = challengesSection();
+    const renderChallenges = () => {
+      const el = challengesSection();
+      chEl.replaceWith(el);
+      chEl = el;
+    };
+
     // Lernreisen in vier Tabs: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
     const seriesWrap = h('div');
     const groups = () => {
@@ -350,7 +381,7 @@
       seriesWrap.replaceChildren(h('section', { class: 'series-list' + (seriesTab === 'archived' ? ' is-archive' : '') },
         h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen')),
         tabs,
-        list.length ? list.map((sr) => seriesCard(sr, renderSeries)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
+        list.length ? list.map((sr) => seriesCard(sr, renderSeries, renderChallenges)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
     };
     renderSeries();
 
@@ -361,7 +392,7 @@
       el: h('div', { class: 'page home' },
         hero(continueCard),
         jokerOffer(),
-        challengesSection(),
+        chEl,
         seriesWrap,
         h('section', null,
           h('div', { class: 'section-head' },

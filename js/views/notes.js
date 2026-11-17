@@ -5,6 +5,7 @@
  *  · Frage – Freitext. Claude antwortet kurz und schreibt die Kurzantwort an die Notiz.
  *  · Thema – Wunsch für neue Lerninhalte (auch über die Kachel „Neues Thema“ auf der Startseite).
  *    Claude setzt ihn auf die Themenliste, aus der neue Lernreisen entstehen.
+ *  · App – Wunsch oder Fehler der App selbst (Bedienung, Ansichten, Spiele). Claude schlägt die Umsetzung vor.
  *
  * LA.notes.button()  Notiz-Knopf für Kopfzeile, Player und Kartenrunde
  * LA.notes.open(kind?) Dialog (optional mit vorgewählter Art); merkt sich die Stelle (Thema, Lektion, Schritt, sichtbare Überschrift)
@@ -45,6 +46,14 @@
       placeholder: 'Thema, Anlass, was dich daran interessiert …',
       withQuote: 'Welches Thema steckt in dem Zitat?',
       hint: 'Claude setzt den Wunsch am Rechner auf deine Themenliste – daraus entstehen neue Lernreisen.',
+    },
+    app: {
+      label: 'App',
+      icon: 'sliders',
+      field: 'Was soll die App besser machen?',
+      placeholder: 'Wunsch, Fehler, was dich stört …',
+      withQuote: 'Was stimmt an der Stelle in der App nicht?',
+      hint: 'Claude schlägt am Rechner vor, wie sich die App ändern lässt, und baut es nach deinem Okay ein.',
     },
   };
   let lastKind = 'card';
@@ -209,7 +218,7 @@
   }
 
   const button = () =>
-    h('button', { class: 'icon-btn note-btn', type: 'button', onclick: open, 'aria-label': 'Notiz anlegen', title: 'Notiz: Kartenwunsch, Frage oder Themenwunsch festhalten' }, icon('note'));
+    h('button', { class: 'icon-btn note-btn', type: 'button', onclick: open, 'aria-label': 'Notiz anlegen', title: 'Notiz: Kartenwunsch, Frage, Themen- oder App-Wunsch festhalten' }, icon('note'));
 
   /* ---------- Liste ---------- */
   const fmt = (iso) => {
@@ -286,7 +295,7 @@
         back,
         h('div', { class: 'section-head' }, h('h1', null, 'Notizen'),
           h('button', { class: 'btn btn-primary', type: 'button', onclick: open }, icon('plus'), 'Neue Notiz')),
-        h('p', { class: 'muted note-intro' }, 'Kartenwünsche, Fragen und Themenwünsche, die du beim Lernen festgehalten hast. Am Rechner in Claude Code ', h('code', null, '/notizen'), ' aufrufen: Claude beantwortet die Fragen kurz, prüft die Kartenwünsche gegen die vorhandenen Karten, setzt neue Themen auf deine Themenliste und hakt alles hier ab.'),
+        h('p', { class: 'muted note-intro' }, 'Kartenwünsche, Fragen, Themen- und App-Wünsche, die du beim Lernen festgehalten hast. Am Rechner in Claude Code ', h('code', null, '/notizen'), ' aufrufen: Claude beantwortet die Fragen kurz, prüft die Kartenwünsche gegen die vorhandenen Karten, setzt neue Themen auf deine Themenliste, schlägt App-Verbesserungen vor und hakt alles hier ab.'),
         tabs,
         empty,
         list,

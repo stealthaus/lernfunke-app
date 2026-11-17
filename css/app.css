@@ -651,8 +651,16 @@ a.sc-next:hover strong {
 a.sc-due {
   text-decoration: none;
 }
-.sc-archive {
+/* Reise verwalten (Tagesfrage an/aus, Archivieren): rechtsbündig, auch wenn es umbricht */
+.sc-manage {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
   margin-left: auto;
+}
+.sc-daily,
+.sc-archive {
   color: var(--muted);
 }
 .segmented.series-tabs {
@@ -2448,8 +2456,14 @@ button.back-link {
 .note-form h3 {
   margin: 0;
 }
+/* Vier Arten in einer Zeile, auch auf dem iPhone */
 .note-form .segmented {
-  align-self: flex-start;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  align-self: stretch;
+}
+.note-form .segmented button {
+  padding-inline: 6px;
 }
 .note-form .modal-actions {
   margin-top: 4px;
