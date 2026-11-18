@@ -63,7 +63,7 @@
     const front = field('Vorderseite', card && card.front, 2, 'Frage oder Begriff');
     const back = field('Rückseite', card && card.back, 5, 'Antwort – gern in deinen eigenen Worten');
     const where = isNew && topics.length > 1
-      ? h('select', { class: 'ce-input' }, topics.map((t) => h('option', { value: t.id, selected: t.id === opts.topicId }, `${t.icon || '📘'} ${t.title}`)))
+      ? h('select', { class: 'ce-input' }, topics.map((t) => h('option', { value: t.id, selected: t.id === opts.topicId }, t.title)))
       : null;
     const saveBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => done(isNew ? 'add' : 'save') }, isNew ? 'Anlegen' : 'Speichern');
     const small = (ic, label, action) => h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => done(action) }, icon(ic), label);
@@ -194,7 +194,7 @@
                  h('div', { class: 'muted' }, `${dueNow.length} fällig · ${newNow.length} neu` + (later ? ` · ${later} weitere fällig in der nächsten Runde` : ''))),
                h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => session([...dueNow, ...newNow], true) }, icon('play'), 'Lernen starten')];
       } else {
-        cta = [h('div', null, h('strong', null, 'Alles erledigt für heute 🎉'), h('div', { class: 'muted' }, 'Deine Karten sind frisch im Gedächtnis. Morgen geht’s weiter.')),
+        cta = [h('div', null, h('strong', null, 'Alles erledigt für heute'), h('div', { class: 'muted' }, 'Deine Karten sind frisch im Gedächtnis. Morgen geht’s weiter.')),
                h('button', { class: 'btn btn-soft', type: 'button', onclick: () => session(LA.sample(all, max), false) }, 'Frei üben – Fächer bleiben unverändert')];
       }
       root.replaceChildren(h('div', { class: 'page cards-page' },
@@ -269,7 +269,7 @@
             h('span', { class: 'cl-front' }, plain(c.front)),
             h('span', { class: 'cl-back' }, plain(c.back)),
             h('span', { class: 'cl-meta' },
-              t ? h('span', null, `${t.icon || '📘'} ${t.title}`) : null,
+              t ? h('span', null, LA.glyph(t.icon || 'book'), ' ', t.title) : null,
               c.own ? h('span', { class: 'cl-flag own' }, 'Eigene Karte') : h('span', null, c.src),
               c.edited ? h('span', { class: 'cl-flag edited' }, 'umgeschrieben') : null,
               c.hidden ? h('span', { class: 'cl-flag' }, 'ausgeblendet') : null)),
@@ -312,7 +312,7 @@
     function meta(c, cs) {
       const box = cs ? `Fach ${cs.box}` : 'Neue Karte';
       const t = o.multi && LA.topics[c._topic];
-      return t ? `${t.icon} ${t.title} · ${box}` : box;
+      return t ? `${t.title} · ${box}` : box;
     }
 
     function session(cards, scored) {
@@ -395,7 +395,7 @@
         LA.fx.sound.done();
         if (total && knownFirst / total >= 0.7) LA.fx.confetti(90);
         stage.replaceChildren(h('div', { class: 'result' },
-          h('div', { class: 'result-emoji' }, '🃏'),
+          h('div', { class: 'result-emoji' }, LA.glyph('cards', 'tile gl-done')),
           h('h2', null, 'Runde geschafft!'),
           h('p', { class: 'muted' }, scored ? 'Die Karten sind in ihre neuen Fächer gewandert.' : 'Freies Üben – die Fächer bleiben unverändert.'),
           h('div', { class: 'result-stats' },
@@ -487,7 +487,7 @@
       box.addEventListener('change', () => pick(box.checked ? [...on, t.id] : [...on].filter((x) => x !== t.id)));
       return h('label', { class: 'ds-row' + (active ? '' : ' off') },
         box,
-        h('span', { class: 'ds-icon' }, t.icon || '📘'),
+        h('span', { class: 'ds-icon' }, LA.glyph(t.icon || 'book')),
         h('span', { class: 'ds-title' }, h('span', { class: 'ds-num' }, `${i + 1}.`), ' ', t.title),
         h('span', { class: 'ds-bar' }, seg(fresh.length, 'var(--muted)', 'Neu'), boxes.map((n, b) => seg(n, `var(--c${b + 1})`, `Fach ${b + 1}`))),
         h('span', { class: 'ds-meta' }, due.length ? h('strong', null, `${due.length} fällig`) : LA.plural(cards.length, 'Karte', 'Karten')));
@@ -532,7 +532,7 @@
         LA.store.dailyAnswer(correct);
         if (correct) sum.gain(dq.bonus);
         return {
-          emoji: correct ? '💡' : '📚',
+          glyph: correct ? 'bulb' : 'book',
           title: correct ? 'Sitzt!' : 'Fast – jetzt weißt du es',
           subtitle: correct ? 'Doppelte XP für die Tagesfrage. Morgen gibt es die nächste.' : 'Lies dir die Erklärung oben noch einmal durch. Morgen gibt es eine neue Frage.',
           stats: [{ label: 'XP', value: '+' + sum.xp }],
@@ -549,8 +549,8 @@
 
   /* ---------- Spielhalle ---------- */
   const GAMES = {
-    zuordnen: { icon: '🔗', title: 'Zuordnen', desc: 'Verbinde Begriffe mit ihren Bedeutungen – so schnell und fehlerfrei wie möglich.', min: 3 },
-    blitz: { icon: '⚡', title: 'Blitzrunde', desc: '60 Sekunden: Stimmt die Aussage oder nicht? Serien geben Multiplikatoren.', min: 6 },
+    zuordnen: { icon: 'link', title: 'Zuordnen', desc: 'Verbinde Begriffe mit ihren Bedeutungen – so schnell und fehlerfrei wie möglich.', min: 3 },
+    blitz: { icon: 'bolt', title: 'Blitzrunde', desc: '60 Sekunden: Stimmt die Aussage oder nicht? Serien geben Multiplikatoren.', min: 6 },
   };
 
   LA.views.arcade = async ({ id }) => {
@@ -572,13 +572,13 @@
           Object.entries(GAMES).map(([key, g]) => {
             const ok = avail[key] >= g.min;
             return h(ok ? 'a' : 'div', { class: 'game-tile' + (ok ? '' : ' disabled'), href: ok ? `#/t/${id}/spiele/${key}` : null },
-              h('div', { class: 'gt-icon' }, g.icon),
+              h('div', { class: 'gt-icon' }, LA.glyph(g.icon, 'tile')),
               h('h3', null, g.title),
               h('p', { class: 'muted' }, g.desc),
               h('div', { class: 'gt-foot' }, ok ? bestLabel[key] || 'Noch kein Rekord' : 'Zu wenig Inhalte für dieses Spiel'));
           }),
           h('a', { class: 'game-tile', href: `#/t/${id}/test` },
-            h('div', { class: 'gt-icon' }, '🎯'),
+            h('div', { class: 'gt-icon' }, LA.glyph('target', 'tile')),
             h('h3', null, 'Quiz-Mix'),
             h('p', { class: 'muted' }, 'Zufällige Fragen aus allen Lektionen – der Abschlusstest.'),
             h('div', { class: 'gt-foot' }, t.test ? `Bestwert: ${Math.round(t.test.best * 100)} %` : 'Noch nicht gespielt')))),
@@ -609,7 +609,7 @@
           const stats = [{ label: 'Zeit', value: LA.formatTime(sum.time) }, { label: 'Rekord', value: bestT ? LA.formatTime(bestT) : '–' }];
           stats.push({ label: 'XP', value: '+' + sum.xp });
           return {
-            emoji: isRecord ? '🏆' : GAMES[game].icon,
+            glyph: isRecord ? 'trophy' : GAMES[game].icon,
             title: skipped ? 'Übersprungen' : isRecord ? 'Neuer Rekord!' : 'Gut gespielt!',
             subtitle: raw.text || '',
             stats,
@@ -647,7 +647,7 @@
         topBar(() => LA.router.go(`#/t/${id}/spiele`), h('div', { class: 'pbar-fill' })),
         h('div', { class: 'player-stage' },
           h('div', { class: 'result blitz-intro' },
-            h('div', { class: 'result-emoji' }, '⚡'),
+            h('div', { class: 'result-emoji' }, LA.glyph('bolt', 'tile')),
             h('h2', null, 'Blitzrunde'),
             h('p', { class: 'muted' }, 'Du hast 60 Sekunden. Entscheide bei jeder Aussage: stimmt sie oder nicht? Drei richtige in Folge erhöhen deinen Multiplikator (bis ×4). Ein Fehler setzt ihn zurück.'),
             h('div', { class: 'kbd-hint muted' }, 'Tastatur: ', h('kbd', null, '←'), ' Stimmt · ', h('kbd', null, '→'), ' Stimmt nicht'),
@@ -735,7 +735,7 @@
         topBar(() => LA.router.go(`#/t/${id}/spiele`), h('div', { class: 'pbar-fill', style: { width: '100%' } })),
         h('div', { class: 'player-stage' },
           h('div', { class: 'result' },
-            h('div', { class: 'result-emoji' }, isRecord ? '🏆' : '⚡'),
+            h('div', { class: 'result-emoji' }, LA.glyph(isRecord ? 'trophy' : 'bolt', 'tile')),
             h('h2', null, isRecord ? 'Neuer Rekord!' : 'Zeit ist um!'),
             h('div', { class: 'result-stats' },
               h('div', { class: 'rstat' }, h('div', { class: 'rstat-val' }, score), h('div', { class: 'rstat-label' }, 'Punkte')),

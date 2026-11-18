@@ -94,7 +94,7 @@
       const d = h('details', { class: 'lab-item card' },
         h('summary', null,
           h('span', { class: 'lab-sum' },
-            h('span', { class: 'lab-title', html: LA.mdi(x.step.title.replace(/^🧪\s*Lab:\s*/, '')) }),
+            h('span', { class: 'lab-title', html: LA.mdi(x.step.title.replace(/^(🧪\s*)?Lab:\s*/, '')) }),
             h('span', { class: 'lab-where muted' }, `Lektion ${x.lesson.index + 1}: ${x.lesson.title}`)),
           chip(x),
           icon('down', 'lab-caret')),
@@ -116,7 +116,7 @@
         const labs = g.labs.map((x) => ({ ...x, topic: g.topic })).filter(show);
         if (!labs.length) return null;
         return h('section', { class: 'lab-group' },
-          single ? null : h('h2', { class: 'lab-group-head' }, h('span', { 'aria-hidden': 'true' }, g.topic.icon || '📘'), g.topic.title),
+          single ? null : h('h2', { class: 'lab-group-head' }, LA.glyph(g.topic.icon || 'book'), g.topic.title),
           labs.map(item));
       }).filter(Boolean);
       list.replaceChildren(...parts);

@@ -211,7 +211,7 @@
           queue.push(c);
         }
         if (!queue.length) {
-          stage.replaceChildren(h('div', { class: 'fc-done' }, '🎉', h('div', null, 'Alle Karten geschafft!')));
+          stage.replaceChildren(h('div', { class: 'fc-done' }, LA.glyph('check', 'tile gl-done'), h('div', null, 'Alle Karten geschafft!')));
           actions.replaceChildren();
           counter.textContent = `${total} / ${total}`;
           ctx.finish({ score: knownFirst / total, text: `${knownFirst} von ${total} Karten auf Anhieb gewusst.` });

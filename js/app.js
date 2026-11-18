@@ -131,7 +131,7 @@
     return {
       el: h('div', { class: 'page' },
         h('div', { class: 'card error-card' },
-          h('div', { class: 'result-emoji' }, '🙈'),
+          h('div', { class: 'result-emoji' }, LA.glyph('question', 'tile')),
           h('h2', null, 'Hoppla!'),
           h('p', null, e.message),
           h('a', { class: 'btn btn-primary', href: '#/' }, 'Zur Startseite'))),

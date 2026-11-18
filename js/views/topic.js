@@ -77,8 +77,8 @@
       ? h('nav', { class: 'series-bar', 'aria-label': 'Lernreise' },
           h('span', { class: 'sb-label' }, icon('route'), h('span', null, h('strong', null, sr.series.title), ` · Station ${sr.index + 1} von ${sr.series.topics.length}`)),
           h('span', { class: 'sb-nav' },
-            sr.prev ? h('a', { href: `#/t/${sr.prev.id}`, title: sr.prev.title }, icon('arrowLeft'), h('span', null, sr.prev.icon + ' ' + sr.prev.title)) : null,
-            sr.next ? h('a', { href: `#/t/${sr.next.id}`, title: sr.next.title }, h('span', null, sr.next.icon + ' ' + sr.next.title), icon('arrowRight')) : null))
+            sr.prev ? h('a', { href: `#/t/${sr.prev.id}`, title: sr.prev.title }, icon('arrowLeft'), h('span', null, sr.prev.title)) : null,
+            sr.next ? h('a', { href: `#/t/${sr.next.id}`, title: sr.next.title }, h('span', null, sr.next.title), icon('arrowRight')) : null))
       : null;
 
     return {
@@ -86,7 +86,7 @@
         h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
         seriesBar,
         h('section', { class: 'topic-hero', style: { '--pastel': LA.pastelOf(id) } },
-          h('div', { class: 'th-icon' }, topic.icon),
+          h('div', { class: 'th-icon' }, LA.glyph(topic.icon || 'book')),
           h('div', { class: 'th-body' },
             h('h1', null, topic.title),
             topic.subtitle ? h('p', { class: 'th-sub' }, topic.subtitle) : null,
@@ -194,7 +194,7 @@
           sum.gain(Math.round(pct * 30));
           return {
             stars: sum.stars,
-            title: pct === 1 ? 'Perfekt! 🏆' : pct >= 0.8 ? 'Sehr stark!' : pct >= 0.6 ? 'Solide Leistung!' : 'Da geht noch was!',
+            title: pct === 1 ? 'Perfekt!' : pct >= 0.8 ? 'Sehr stark!' : pct >= 0.6 ? 'Solide Leistung!' : 'Da geht noch was!',
             subtitle: `${correct} von ${size} Fragen komplett richtig.` + (rec && rec.newBest ? ' **Neuer Bestwert!**' : '') + (hint ? ' ' + hint : ''),
             stats: [
               { label: 'Ergebnis', value: Math.round(pct * 100) + ' %' },
@@ -252,7 +252,7 @@
         el: h('div', { class: 'page' },
           h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
           h('div', { class: 'card error-card' },
-            h('div', { class: 'result-emoji' }, '🤍'),
+            h('div', { class: 'result-emoji' }, LA.glyph('heart', 'tile')),
             h('h2', null, 'Noch keine Favoriten'),
             h('p', null, `Tippe in einer Lektion oder einem Test oben rechts auf das Herz, um eine Frage zu merken. Danach kannst du alle Favoriten aus „${sr.title}“ hier gesammelt testen.`),
             h('a', { class: 'btn btn-primary', href: '#/' }, 'Zur Startseite'))),

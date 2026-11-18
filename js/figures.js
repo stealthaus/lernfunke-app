@@ -77,7 +77,7 @@
     steps.forEach((st, i) => {
       if (i) wrapEl.appendChild(h('div', { class: 'flow-arrow' }, LA.icon('arrowRight')));
       wrapEl.appendChild(h('div', { class: 'flow-node', style: { '--node': nth(i, st.color) } },
-        st.icon ? h('div', { class: 'flow-icon' }, st.icon) : h('div', { class: 'flow-num' }, i + 1),
+        st.icon ? h('div', { class: 'flow-icon' }, LA.glyph(st.icon)) : h('div', { class: 'flow-num' }, i + 1),
         h('div', { class: 'flow-label', html: LA.mdi(st.label) }),
         st.sub ? h('div', { class: 'flow-sub', html: LA.mdi(st.sub) }) : null));
     });
@@ -107,7 +107,9 @@
       const x = cx + R * Math.cos(ang(i)), y = cy + R * Math.sin(ang(i));
       const g = s('g', { class: 'cycle-node', style: `--node:${nth(i, it.color)}` });
       g.appendChild(s('rect', { x: x - nw / 2, y: y - nh / 2, width: nw, height: nh, rx: 14 }));
-      g.appendChild(svgText(x, y, (it.icon ? it.icon + ' ' : '') + it.label, n > 6 ? 13 : 15, { class: 'cycle-label' }));
+      const gl = it.icon && LA.glyphSvg(it.icon, x - nw / 2 + 8, y - 9, 18);
+      if (gl) g.appendChild(gl);
+      g.appendChild(svgText(gl ? x + 11 : x, y, it.label, (n > 6 ? 13 : 15) - (gl ? 3 : 0), { class: 'cycle-label' }));
       if (it.sub) g.appendChild(s('title', null, it.sub));
       svg.appendChild(g);
     });
@@ -121,7 +123,7 @@
     h('div', { class: 'compare', style: { '--cols': f.columns.length } },
       f.columns.map((col, i) =>
         h('div', { class: `compare-col${col.tone ? ' tone-' + col.tone : ''}`, style: col.tone ? null : { '--col': nth(i, col.color) } },
-          h('div', { class: 'compare-head' }, col.icon ? h('span', { class: 'compare-icon' }, col.icon) : null, h('span', { html: LA.mdi(col.title) })),
+          h('div', { class: 'compare-head' }, col.icon ? h('span', { class: 'compare-icon' }, LA.glyph(col.icon)) : null, h('span', { html: LA.mdi(col.title) })),
           h('ul', null, (col.items || []).map((it) => h('li', { html: LA.mdi(it) }))),
           col.footer ? h('div', { class: 'compare-foot', html: LA.mdi(col.footer) }) : null))));
 
@@ -239,7 +241,7 @@
     h('div', { class: 'tiles', style: f.columns ? { '--tile-cols': f.columns } : null },
       f.items.map((it, i) =>
         h('div', { class: 'tile', style: { '--tile': nth(i, it.color) } },
-          it.icon ? h('div', { class: 'tile-icon' }, it.icon) : null,
+          it.icon ? h('div', { class: 'tile-icon' }, LA.glyph(it.icon)) : null,
           h('div', { class: 'tile-title', html: LA.mdi(it.title) }),
           it.text ? h('div', { class: 'tile-text', html: LA.mdi(it.text) }) : null))));
 

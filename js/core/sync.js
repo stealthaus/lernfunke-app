@@ -293,7 +293,7 @@
 
   const errorView = (e) =>
     page(
-      h('div', { class: 'result-emoji' }, '🙈'),
+      h('div', { class: 'result-emoji' }, LA.glyph('question', 'tile')),
       h('h2', null, 'Inhalte nicht erreichbar'),
       h('p', { class: 'muted' }, describe(e)),
       h('div', { class: 'btn-row' },

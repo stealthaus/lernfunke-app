@@ -89,10 +89,11 @@
   }
 
   /* ---------- Toasts ---------- */
-  function toast(title, text, kind = 'info') {
+  function toast(title, text, kind = 'info', glyph) {
     let box = document.getElementById('toasts');
     if (!box) document.body.appendChild((box = h('div', { id: 'toasts' })));
-    const el = h('div', { class: `toast toast-${kind}`, role: 'status', title: 'Antippen oder wegwischen zum Schließen' }, h('strong', null, title), text ? h('span', null, text) : null);
+    const el = h('div', { class: `toast toast-${kind}`, role: 'status', title: 'Antippen oder wegwischen zum Schließen' },
+      glyph ? LA.glyph(glyph, 'tile toast-gl') : null, h('strong', null, title), text ? h('span', null, text) : null);
     box.appendChild(el);
     // Oben am Rand, kurz sichtbar; Antippen oder Wischen (hoch/seitlich) schließt sofort.
     let gone = false;
@@ -137,7 +138,7 @@
   function levelUp(level) {
     sound.level();
     confetti(160);
-    toast(`Level ${level} erreicht! 🚀`, 'Weiter so – dein Wissen wächst.', 'level');
+    toast(`Level ${level} erreicht!`, 'Weiter so – dein Wissen wächst.', 'level', 'rocket');
   }
 
   /** Kleines "+10 XP", das an einem Element aufsteigt. */

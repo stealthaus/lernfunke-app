@@ -386,7 +386,7 @@
     save();
     if (levelInfo().level > before) LA.fx && LA.fx.levelUp(levelInfo().level);
     if (todayBefore < state.goal && state.days[t] >= state.goal) {
-      LA.fx && LA.fx.toast('Tagesziel erreicht! 🎯', 'Stark – du hast heute ' + state.goal + ' XP gesammelt.');
+      LA.fx && LA.fx.toast('Tagesziel erreicht!', 'Stark – du hast heute ' + state.goal + ' XP gesammelt.', 'info', 'target');
       award('goal');
     }
     checkBadges();
@@ -665,22 +665,22 @@
 
   /* ---------- Abzeichen ---------- */
   const BADGES = [
-    { id: 'first', emoji: '✨', title: 'Erster Funke', desc: 'Erste Lektion abgeschlossen', test: (s) => s.stats.lessons >= 1 },
-    { id: 'perfect', emoji: '💎', title: 'Fehlerfrei', desc: 'Eine Lektion mit 3 Sternen', test: (s) => s.stats.perfect >= 1 },
-    { id: 'goal', emoji: '🎯', title: 'Zielstrebig', desc: 'Tagesziel erreicht' },
-    { id: 'streak3', emoji: '🔥', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3 },
-    { id: 'streak7', emoji: '🏅', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
+    { id: 'first', icon: 'spark', title: 'Erster Funke', desc: 'Erste Lektion abgeschlossen', test: (s) => s.stats.lessons >= 1 },
+    { id: 'perfect', icon: 'diamond', title: 'Fehlerfrei', desc: 'Eine Lektion mit 3 Sternen', test: (s) => s.stats.perfect >= 1 },
+    { id: 'goal', icon: 'target', title: 'Zielstrebig', desc: 'Tagesziel erreicht' },
+    { id: 'streak3', icon: 'flame', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3 },
+    { id: 'streak7', icon: 'medal', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
     // 'joker' hieß die alte Fassung, die rückwirkend vergeben wurde – bleibt im Dokument liegen, wird nicht mehr angezeigt
-    { id: 'joker-aktiv', emoji: '🛟', title: 'Gerettet', desc: 'Mit einem Joker deine Serie gehalten', test: (s) => Object.keys(s.jokers).length > 0 },
-    { id: 'streak30', emoji: '📅', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
-    { id: 'quests', emoji: '🗺️', title: 'Wochen-Champion', desc: 'Alle drei Wochen-Quests einer Woche geschafft' },
-    { id: 'level5', emoji: '🚀', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
-    { id: 'level10', emoji: '🌟', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
-    { id: 'cards50', emoji: '🃏', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
-    { id: 'blitz', emoji: '⚡', title: 'Blitzmerker', desc: '200 Punkte in der Blitzrunde', test: (s) => s.stats.blitzBest >= 200 },
-    { id: 'gamer', emoji: '🎮', title: 'Spielkind', desc: '10 Mini-Spiele gespielt', test: (s) => s.stats.games >= 10 },
-    { id: 'master', emoji: '🎓', title: 'Themen-Meister', desc: 'Alle Lektionen eines Themas abgeschlossen' },
-    { id: 'ace', emoji: '🏆', title: 'Prüfungsass', desc: '100 % im Abschlusstest' },
+    { id: 'joker-aktiv', icon: 'lifebuoy', title: 'Gerettet', desc: 'Mit einem Joker deine Serie gehalten', test: (s) => Object.keys(s.jokers).length > 0 },
+    { id: 'streak30', icon: 'calendar', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
+    { id: 'quests', icon: 'map', title: 'Wochen-Champion', desc: 'Alle drei Wochen-Quests einer Woche geschafft' },
+    { id: 'level5', icon: 'rocket', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
+    { id: 'level10', icon: 'chartUp', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
+    { id: 'cards50', icon: 'cards', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
+    { id: 'blitz', icon: 'bolt', title: 'Blitzmerker', desc: '200 Punkte in der Blitzrunde', test: (s) => s.stats.blitzBest >= 200 },
+    { id: 'gamer', icon: 'gamepad', title: 'Spielkind', desc: '10 Mini-Spiele gespielt', test: (s) => s.stats.games >= 10 },
+    { id: 'master', icon: 'cap', title: 'Themen-Meister', desc: 'Alle Lektionen eines Themas abgeschlossen' },
+    { id: 'ace', icon: 'trophy', title: 'Prüfungsass', desc: '100 % im Abschlusstest' },
   ];
 
   function award(id) {
@@ -689,7 +689,7 @@
     if (!b) return false;
     doc.badges[id] = LA.today();
     save();
-    LA.fx && LA.fx.toast(`${b.emoji} Abzeichen: ${b.title}`, b.desc, 'badge');
+    LA.fx && LA.fx.toast(`Abzeichen: ${b.title}`, b.desc, 'badge', b.icon);
     return true;
   }
 

@@ -340,7 +340,6 @@ a.topic-card:hover h3 {
 }
 .tc-icon {
   font-size: 1.5rem;
-  filter: grayscale(1);
   margin-right: auto;
 }
 .tc-done {
@@ -756,7 +755,6 @@ a.sc-due {
   border: 1px solid var(--rule);
   background: var(--bg);
   font-size: 3.4rem;
-  filter: grayscale(1);
 }
 .th-body {
   flex: 1;
@@ -1507,16 +1505,15 @@ a.ch-row:hover {
   opacity: 0.55;
 }
 .badge .badge-emoji {
-  font-size: 2.2rem;
-  filter: grayscale(1);
+  font-size: 2rem;
 }
 .badge.earned {
   opacity: 1;
   border-color: var(--accent-line);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.badge.earned .badge-emoji {
-  filter: none;
+.badge.earned .gl-tile {
+  background: var(--p2);
 }
 .badge-title {
   font-weight: 800;
@@ -1959,7 +1956,18 @@ button.back-link {
   user-select: none;
   -webkit-user-select: none;
 }
-.toast span {
+.toast:has(.toast-gl) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  align-items: center;
+}
+.toast .toast-gl {
+  grid-row: span 2;
+  font-size: 1.6rem;
+  opacity: 1;
+}
+.toast > span:not(.gl) {
   opacity: 0.8;
   font-size: 0.9rem;
 }

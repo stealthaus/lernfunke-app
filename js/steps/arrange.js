@@ -139,10 +139,9 @@
       let justDragged = false;
 
       const buckets = step.categories.map((c, ci) => {
-        const label = (c.icon ? c.icon + '\u00a0' : '') + c.name;
-        const body = h('div', { class: 'bucket-items', 'data-name': label });
+        const body = h('div', { class: 'bucket-items', 'data-name': c.name });
         const el = h('div', { class: 'bucket', style: { '--bucket': `var(--c${(ci % 6) + 1})` }, onclick: (e) => !e.target.closest('.chip') && !justDragged && place(ci, selected || current()) },
-          h('div', { class: 'bucket-head' }, label),
+          h('div', { class: 'bucket-head' }, c.icon ? LA.glyph(c.icon) : null, c.icon ? '\u00a0' : null, c.name),
           body);
         el._ci = ci;
         return { el, body };

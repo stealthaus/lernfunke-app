@@ -6,7 +6,7 @@
  *   gradeAll: false,           // auch Selbsteinschätzungen (think) zählen zur Genauigkeit – für Tests
  *   showTopic: false,          // Thema über jeder Frage anzeigen (Reise-Tests mischen Themen)
  *   onExit(),                  // X-Button
- *   result(summary) → { stars?, title, subtitle, stats:[{label,value}], actions:[{label, primary?, href? | onClick?}] }
+ *   result(summary) → { stars? | glyph?, title, subtitle, stats:[{label,value}], actions:[{label, primary?, href? | onClick?}] }
  *
  * Schritt-Instanzen: { el, check?(), key?(e), review?() – Ansicht für den Rückblick vorbereiten, destroy?() }
  * }) → { el, destroy }
@@ -263,7 +263,7 @@
       }
       // data-topic: Glossar-Popover schlagen [[Begriffe]] im Thema der Frage nach
       const card = h('div', { class: 'step-card' + (step._retry ? ' is-retry' : ''), dataset: { topic: stepTopic.id } },
-        opts.showTopic ? h('div', { class: 'step-topic' }, stepTopic.icon, ' ', stepTopic.title) : null,
+        opts.showTopic ? h('div', { class: 'step-topic' }, LA.glyph(stepTopic.icon || 'book'), ' ', stepTopic.title) : null,
         step._retry ? h('div', { class: 'retry-tag' }, icon('refresh'), 'Wiederholung') : null,
         inst.el);
       curCard = card;
@@ -356,7 +356,7 @@
     function resultScreen(r, sum) {
       const stars = r.stars != null
         ? h('div', { class: 'result-stars' }, [1, 2, 3].map((i) => h('span', { class: 'rstar' + (i <= r.stars ? ' on' : ''), style: { animationDelay: i * 0.18 + 's' } }, icon('star'))))
-        : r.emoji ? h('div', { class: 'result-emoji' }, r.emoji) : null;
+        : r.glyph ? h('div', { class: 'result-emoji' }, LA.glyph(r.glyph, 'tile')) : null;
       return h('div', { class: 'result' },
         stars,
         h('h2', null, r.title),

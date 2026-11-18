@@ -21,7 +21,7 @@
 
   /** Rundengröße der Karteikarten – die 100 ist die Extremstufe und hebt sich ab */
   LA.ui.roundSizePicker = (onPick) => LA.ui.segmented(
-    LA.store.ROUND_SIZES.map((n) => (n >= 100 ? [n, `${n} 🔥`, 'seg-hot'] : [n, String(n)])), LA.store.roundSize(), onPick);
+    LA.store.ROUND_SIZES.map((n) => (n >= 100 ? [n, h('span', null, String(n), ' ', LA.glyph('flame')), 'seg-hot'] : [n, String(n)])), LA.store.roundSize(), onPick);
 
   /** Fortschrittsring als SVG */
   LA.ui.ring = (pct, size = 56, stroke = 6, label) => {
@@ -130,7 +130,7 @@
     const sr = LA.seriesOf(t.id);
     return h('a', { class: 'topic-card', href: `#/t/${t.id}`, style: { '--pastel': LA.pastelOf(t.id) } },
       h('div', { class: 'tc-band' },
-        h('span', { class: 'tc-icon' }, t.icon || '📘'),
+        h('span', { class: 'tc-icon' }, LA.glyph(t.icon || 'book')),
         p.pct === 1 ? h('span', { class: 'tc-done' }, icon('check'), 'Fertig') : null,
         sr ? h('span', { class: 'tc-series', title: sr.series.title }, icon('route'), `Station ${sr.index + 1}`) : null),
       h('div', { class: 'tc-body' },
@@ -554,7 +554,7 @@
 
     const badges = h('div', { class: 'badges' }, LA.store.BADGES.map((b) =>
       h('div', { class: 'badge' + (st.badges[b.id] ? ' earned' : ''), title: st.badges[b.id] ? 'Erhalten am ' + st.badges[b.id] : 'Noch nicht erhalten' },
-        h('div', { class: 'badge-emoji' }, b.emoji),
+        h('div', { class: 'badge-emoji' }, LA.glyph(b.icon, 'tile')),
         h('div', { class: 'badge-title' }, b.title),
         h('div', { class: 'badge-desc' }, b.desc))));
 
