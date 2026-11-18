@@ -1640,7 +1640,7 @@ a.game-tile:hover {
   background: var(--surface-2);
   position: relative;
   overflow: hidden;
-  border: 2px solid color-mix(in srgb, var(--box) 40%, transparent);
+  border: 1px solid var(--rule);
 }
 .lt-stack::after {
   content: "";
@@ -1649,7 +1649,8 @@ a.game-tile:hover {
   right: 0;
   bottom: 0;
   height: var(--h);
-  background: repeating-linear-gradient(0deg, var(--box) 0 6px, color-mix(in srgb, var(--box) 70%, white) 6px 8px);
+  background: var(--box);
+  border-top: 1px solid var(--rule);
   transition: height 0.6s ease;
 }
 .lt-count {
@@ -1785,7 +1786,9 @@ button.back-link {
   margin-top: 1px;
   border-radius: 0;
   background: var(--box);
-  color: var(--surface);
+  color: var(--text);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
   font-size: 0.8rem;
   font-weight: 800;
 }

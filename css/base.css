@@ -45,6 +45,12 @@
   --p4: #f6d3de;
   --p5: #ded7f4;
   --p6: #cbeaf0;
+  /* Karteikarten-Fächer: Aprikose (wackelig) → Mint (sitzt); dunkel über die Pastelltöne mit */
+  --box-1: var(--p3);
+  --box-2: color-mix(in oklch, var(--p3) 70%, var(--p2));
+  --box-3: color-mix(in oklch, var(--p3) 45%, var(--p2));
+  --box-4: color-mix(in oklch, var(--p3) 20%, var(--p2));
+  --box-5: var(--p2);
   --logo-bg: #cdebd8;  /* Logo bleibt in beiden Modi gleich (wie Favicon und App-Icon) */
   --logo-ink: #111111;
   --tint-mix: 20%; /* Anteil der Reise-/Themenfarbe an ihrer Pastellfläche */

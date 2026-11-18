@@ -38,7 +38,7 @@
     const max = Math.max(1, freshCount, ...boxes);
     return h('div', { class: 'leitner' },
       h('div', { class: 'lt-box lt-new' }, h('div', { class: 'lt-stack', style: { '--h': (freshCount / max) * 100 + '%' } }), h('div', { class: 'lt-count' }, freshCount), h('div', { class: 'lt-label' }, 'Neu')),
-      boxes.map((n, i) => h('div', { class: 'lt-box', style: { '--box': `var(--c${i + 1})` } },
+      boxes.map((n, i) => h('div', { class: 'lt-box', style: { '--box': `var(--box-${i + 1})` } },
         h('div', { class: 'lt-stack', style: { '--h': (n / max) * 100 + '%' } }),
         h('div', { class: 'lt-count' }, n),
         h('div', { class: 'lt-label' }, `Fach ${i + 1}`),
@@ -264,7 +264,7 @@
         const cs = LA.store.cardState(c._topic, c.id);
         const t = o.multi && LA.topics[c._topic];
         return h('button', { class: 'cl-row' + (c.hidden ? ' off' : ''), type: 'button', dataset: { id: c.id }, onclick: () => edit(c) },
-          h('span', { class: 'cl-box' + (cs ? '' : ' new'), style: cs ? { '--box': `var(--c${cs.box})` } : null, title: cs ? `Fach ${cs.box}` : 'Neue Karte' }, cs ? cs.box : ''),
+          h('span', { class: 'cl-box' + (cs ? '' : ' new'), style: cs ? { '--box': `var(--box-${cs.box})` } : null, title: cs ? `Fach ${cs.box}` : 'Neue Karte' }, cs ? cs.box : ''),
           h('span', { class: 'cl-text' },
             h('span', { class: 'cl-front' }, plain(c.front)),
             h('span', { class: 'cl-back' }, plain(c.back)),
@@ -489,7 +489,7 @@
         box,
         h('span', { class: 'ds-icon' }, LA.glyph(t.icon || 'book')),
         h('span', { class: 'ds-title' }, h('span', { class: 'ds-num' }, `${i + 1}.`), ' ', t.title),
-        h('span', { class: 'ds-bar' }, seg(fresh.length, 'var(--muted)', 'Neu'), boxes.map((n, b) => seg(n, `var(--c${b + 1})`, `Fach ${b + 1}`))),
+        h('span', { class: 'ds-bar' }, seg(fresh.length, 'var(--muted)', 'Neu'), boxes.map((n, b) => seg(n, `var(--box-${b + 1})`, `Fach ${b + 1}`))),
         h('span', { class: 'ds-meta' }, due.length ? h('strong', null, `${due.length} fällig`) : LA.plural(cards.length, 'Karte', 'Karten')));
     });
 
