@@ -109,6 +109,9 @@
     return `${n} ${n === 1 ? one : many}`;
   }
 
+  /** Faktor deutsch: 1.5 → „1,5“ */
+  const fmtMult = (m) => String(m).replace('.', ',');
+
   function formatTime(ms) {
     const sec = Math.round(ms / 1000);
     const m = Math.floor(sec / 60);
@@ -176,6 +179,6 @@
 
   Object.assign(LA, {
     h, s, escapeHtml, shuffle, shuffleNotIdentity, sample, clamp, hash, slug,
-    today, addDays, daysBetween, plural, formatTime, icon,
+    today, addDays, daysBetween, plural, fmtMult, formatTime, icon,
   });
 })();

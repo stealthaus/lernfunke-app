@@ -550,7 +550,15 @@
       h('dl', { class: 'streak-facts' },
         h('div', null, h('dt', null, 'Aktuelle Serie'), h('dd', null, LA.plural(si.days, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Längste Serie'), h('dd', null, LA.plural(si.best, 'Tag', 'Tage'))),
-        h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–'))));
+        h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–')),
+        h('div', null, h('dt', null, 'XP-Boost'), h('dd', null, boostText()))),
+      h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er zählt fürs Level; dein Tagesziel misst weiter die XP ohne Boost.`));
+
+    function boostText() {
+      const b = LA.store.xpBoost();
+      const now = b.mult > 1 ? `×${LA.fmtMult(b.mult)}` : 'keiner';
+      return b.next ? `${now} · ×${LA.fmtMult(b.next.mult)} ab ${LA.plural(b.next.days, 'Tag', 'Tagen')}` : now;
+    }
 
     const badges = h('div', { class: 'badges' }, LA.store.BADGES.map((b) =>
       h('div', { class: 'badge' + (st.badges[b.id] ? ' earned' : ''), title: st.badges[b.id] ? 'Erhalten am ' + st.badges[b.id] : 'Noch nicht erhalten' },

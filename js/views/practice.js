@@ -373,10 +373,8 @@
         const c = queue.shift();
         const firstTime = !missed.has(c.id);
         if (scored && firstTime) LA.store.reviewCard(c._topic, c.id, ok);
-        const gain = ok ? 2 : 1;
-        xp += gain;
+        xp += LA.store.addXP(ok ? 2 : 1);
         xpVal.textContent = xp;
-        LA.store.addXP(gain);
         if (ok) {
           done++;
           if (firstTime) knownFirst++;
@@ -727,8 +725,7 @@
       cleanup();
       const isRecord = LA.store.best(id, 'blitz', score);
       LA.store.setBlitz(score);
-      const xp = Math.min(40, Math.round(score / 10));
-      LA.store.addXP(xp);
+      const xp = LA.store.addXP(Math.min(40, Math.round(score / 10)));
       LA.fx.sound.done();
       if (isRecord) LA.fx.confetti();
       root.replaceChildren(h('div', { class: 'player' },

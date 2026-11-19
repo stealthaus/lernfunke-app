@@ -50,7 +50,16 @@
       value: (w) => w.sum('games') },
     { id: 'xp', group: 'xp', targets: [250, 350], text: (n) => `Sammle ${n} XP`,
       value: (w) => w.days.reduce((a, d) => a + (st().days[d] || 0), 0) },
+    // Favoriten wiederholen: erst ab dieser Woche im Pool (sonst würfelt die laufende Woche neu)
+    { id: 'favtest', group: 'favs', targets: [1, 2], since: '2026-11-23', needsFavs: true,
+      text: (n) => (n === 1 ? 'Mach einen Favoriten-Test' : `Mach ${n} Favoriten-Tests`),
+      value: (w) => w.sum('favtests') },
   ];
+  const FAV_MIN = 5; // so viele Favoriten muss es vor Wochenbeginn geben, damit die Favoriten-Quest kommt
+
+  /** Favoriten, die schon vor dem Tag gesetzt waren – hängt nur am gespeicherten Stand */
+  const favsBefore = (day) => Object.values(st().topics).reduce((a, t) =>
+    a + Object.values(t.favs || {}).filter((at) => at && at < day).length, 0);
 
   /** Die Quests dieser Woche mit Stand: { start, daysLeft, list: [{ key, text, target, value, done }], allDone, bonus } */
   function week() {
@@ -64,7 +73,9 @@
     const hasDaily = Object.values(st().topics).some((t) => Object.values(t.lessons || {}).some((l) => l.at && l.at < start));
     const cards = QUESTS.filter((q) => q.group === 'cards');
     const chosen = [pick(rnd, cards)];
-    let rest = QUESTS.filter((q) => q.group !== 'cards' && (!q.needsDaily || hasDaily));
+    const hasFavs = favsBefore(start) >= FAV_MIN;
+    let rest = QUESTS.filter((q) => q.group !== 'cards' && (!q.since || q.since <= start)
+      && (!q.needsDaily || hasDaily) && (!q.needsFavs || hasFavs));
     while (chosen.length < 3 && rest.length) {
       const q = pick(rnd, rest);
       chosen.push(q);
@@ -93,11 +104,13 @@
     try {
       const wk = week();
       wk.list.forEach((q) => {
-        if (q.reached && !q.done && LA.store.claimQuest(q.key, QUEST_XP)) LA.fx.toast('Quest geschafft', `${q.text} · +${QUEST_XP} XP`, 'badge');
+        const got = q.reached && !q.done ? LA.store.claimQuest(q.key, QUEST_XP) : 0;
+        if (got) LA.fx.toast('Quest geschafft', `${q.text} · +${got} XP`, 'badge');
       });
       const after = week();
-      if (after.allDone && !after.bonus && LA.store.claimQuest(after.bonusKey, BONUS_XP)) {
-        LA.fx.toast('Alle Wochen-Quests geschafft!', `Bonus: +${BONUS_XP} XP`, 'level');
+      const bonus = after.allDone && !after.bonus ? LA.store.claimQuest(after.bonusKey, BONUS_XP) : 0;
+      if (bonus) {
+        LA.fx.toast('Alle Wochen-Quests geschafft!', `Bonus: +${bonus} XP`, 'level');
         LA.store.award('quests');
       }
     } finally {

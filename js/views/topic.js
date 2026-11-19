@@ -266,6 +266,7 @@
       back: '#/',
       backLabel: 'Zur Startseite',
       showTopic: true,
+      record: favOnly ? () => (LA.store.favTestDone(), null) : null,
       hint: favOnly ? 'Sitzt eine Frage inzwischen sicher? Nimm ihr das Herz wieder weg.' : '',
     });
   };

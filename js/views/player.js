@@ -11,8 +11,9 @@
  * Schritt-Instanzen: { el, check?(), key?(e), review?() – Ansicht für den Rückblick vorbereiten, destroy?() }
  * }) → { el, destroy }
  *
- * Rückblick: Der Pfeil oben links springt zu schon erledigten Aufgaben zurück (z. B. um sie nachträglich
- * zu merken). Erklärkarten werden übersprungen, die Aufgabe bleibt so, wie sie beantwortet wurde (gesperrt). */
+ * Rückblick: Der Pfeil oben links springt zu schon gesehenen Schritten zurück – zu Erklärkarten (z. B. zur
+ * ersten von zwei Erklärkarten) und zu erledigten Aufgaben (z. B. um sie nachträglich zu merken). Aufgaben
+ * bleiben so, wie sie beantwortet wurde (gesperrt); Erklärkarten bleiben bedienbar (Glossar, Grafiken). */
 (function () {
   'use strict';
   const LA = window.LA;
@@ -32,7 +33,7 @@
     let state = 'answer'; // 'answer' → 'checked' → nächster Schritt; 'done' am Ende
     let xp = 0;
     let isReady = false;
-    // Rückblick: erledigte Aufgaben mit ihrer beantworteten Karte; review = Index darin, -1 = aktuelle Ansicht
+    // Rückblick: gesehene Schritte mit ihrer Karte; review = Index darin, -1 = aktuelle Ansicht
     const history = [];
     let review = -1;
     let curCard = null;
@@ -40,7 +41,6 @@
     let resultEl = null;
     // Fußleiste der aktuellen Aufgabe – wird gemerkt, damit sie nach dem Rückblick wiederhergestellt werden kann
     const footState = { fb: [null], prim: ['Weiter', {}] };
-    const isTask = (m) => m === 'check' || m === 'game';
 
     const barFill = h('div', { class: 'pbar-fill' });
     const bar = h('div', { class: 'pbar', role: 'progressbar', 'aria-label': 'Fortschritt', 'aria-valuemin': '0' }, barFill);
@@ -49,8 +49,7 @@
     const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
     const xpVal = h('span', null, '0');
     const xpChip = h('div', { class: 'xp-chip', title: 'In dieser Runde gesammelte XP' }, icon('bolt'), xpVal, h('span', { class: 'xp-unit' }, ' XP'));
-    const hasTasks = queue.some((st) => LA.steps[st.type] && isTask(LA.steps[st.type].mode));
-    const backBtn = hasTasks ? h('button', { class: 'icon-btn back-btn', type: 'button', onclick: goBack }, icon('arrowLeft')) : null;
+    const backBtn = queue.length > 1 ? h('button', { class: 'icon-btn back-btn', type: 'button', onclick: goBack }, icon('arrowLeft')) : null;
     const favBtn = queue.some((st) => st._qid) ? h('button', { class: 'icon-btn fav-btn', type: 'button', onclick: toggleFav }, icon('heart')) : null;
     const stage = h('div', { class: 'player-stage' });
     const fbBox = h('div', { class: 'feedback' });
@@ -111,13 +110,13 @@
 
     function gain(n) {
       if (!n) return;
-      xp += n;
+      const got = LA.store.addXP(n); // samt Serien-Boost
+      xp += got;
       xpVal.textContent = xp;
       xpChip.classList.remove('pop');
       void xpChip.offsetWidth;
       xpChip.classList.add('pop');
-      LA.store.addXP(n);
-      LA.fx.floatXP(primary, n);
+      LA.fx.floatXP(primary, got);
     }
 
     const ctx = {
@@ -176,24 +175,27 @@
       if (first) LA.fx.toast('Als Favorit gemerkt', 'Favoriten kommen in Tests öfter dran. Auf der Startseite kannst du sie je Lernreise gesammelt testen.');
     }
 
-    /* ---------- Rückblick: zu erledigten Aufgaben zurück, Erklärkarten bleiben hinter dir ---------- */
+    /* ---------- Rückblick: zu schon gesehenen Schritten zurück ---------- */
     function syncBack() {
       if (!backBtn) return;
       const can = review < 0 ? history.length > 0 : review > 0;
       backBtn.style.visibility = can ? '' : 'hidden';
       backBtn.disabled = !can;
-      backBtn.setAttribute('aria-label', 'Vorherige Aufgabe ansehen');
-      backBtn.title = 'Vorherige Aufgabe ansehen – z. B. um sie als Favorit zu merken';
+      backBtn.setAttribute('aria-label', 'Vorherigen Schritt ansehen');
+      backBtn.title = 'Vorherigen Schritt ansehen – z. B. die Erklärung davor oder eine Aufgabe, um sie als Favorit zu merken';
     }
 
-    /** Beantwortete Karte der aktuellen Aufgabe aufheben, gesperrt bis auf die Erklärung */
+    /** Karte des aktuellen Schritts aufheben: Aufgaben gesperrt bis auf die Erklärung, Erklärkarten bleiben bedienbar */
     function archive() {
-      if (!curCard || !isTask(mode)) return;
-      if (inst && inst.review) inst.review();
-      [...curCard.children].forEach((c) => {
-        if (!c.classList.contains('explain-box')) c.inert = true;
-      });
-      curCard.prepend(h('div', { class: 'review-tag' }, icon('arrowLeft'), 'Rückblick – schon erledigt'));
+      if (!curCard) return;
+      const passive = mode === 'passive';
+      if (!passive) {
+        if (inst && inst.review) inst.review();
+        [...curCard.children].forEach((c) => {
+          if (!c.classList.contains('explain-box')) c.inert = true;
+        });
+      }
+      curCard.prepend(h('div', { class: 'review-tag' }, icon('arrowLeft'), passive ? 'Rückblick' : 'Rückblick – schon erledigt'));
       history.push({ step: queue[idx], card: curCard, pos: idx });
     }
 
@@ -207,7 +209,7 @@
       stage.scrollTop = 0;
       foot.hidden = false;
       paintFeedback(null);
-      paintPrimary(state === 'done' ? 'Zurück zum Ergebnis' : 'Zurück zur Aufgabe');
+      paintPrimary(state === 'done' ? 'Zurück zum Ergebnis' : mode === 'passive' ? 'Zurück zur Erklärung' : 'Zurück zur Aufgabe');
       counter.textContent = `${pos + 1} / ${queue.length}`;
       live.textContent = `Rückblick: Schritt ${pos + 1}`;
       syncFav();

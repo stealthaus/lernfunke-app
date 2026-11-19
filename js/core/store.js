@@ -75,7 +75,7 @@
     badges: {},
     topics: {},
     notes: {}, // Notiz-ID → { v: { kind, text, quote?, topic, where, hash, at, done? }, t }
-    act: {}, // 'YYYY-MM-DD' → { reviews, lessons, perfect, games, dq, blitz } je Gerät
+    act: {}, // 'YYYY-MM-DD' → { reviews, lessons, perfect, games, dq, blitz, favtests } je Gerät
     quests: {}, // 'Montag der Woche|quest-id' → Datum, an dem die Quest geschafft wurde
     jokers: {}, // 'YYYY-MM-DD' (gehaltener Tag) → Datum, an dem der Joker eingesetzt wurde
   });
@@ -374,13 +374,28 @@
     return true;
   }
 
+  /* ---------- Serien-Boost: Wer Tag für Tag dranbleibt, sammelt schneller XP fürs Level ----------
+   * Gezählt wird die Serie samt heute (am ersten XP des Tages zählt der Tag schon mit). Der Boost
+   * gilt nur für die Gesamt-XP (Level); Tagesziel, Tageskurve und XP-Quests zählen die XP ohne Boost,
+   * damit sie gleich viel Lernen verlangen. */
+  const BOOSTS = [{ days: 30, mult: 2 }, { days: 7, mult: 1.5 }, { days: 3, mult: 1.2 }];
+  function xpBoost() {
+    const si = streakInfo();
+    const days = si.learnedToday ? si.days : si.days + 1;
+    const tier = BOOSTS.find((b) => days >= b.days);
+    const next = BOOSTS.slice().reverse().find((b) => days < b.days) || null;
+    return { mult: tier ? tier.mult : 1, days, next, tiers: BOOSTS };
+  }
+
   /* ---------- XP ---------- */
+  /** n Basis-XP gutschreiben; liefert die XP samt Serien-Boost, die aufs Level gehen */
   function addXP(n) {
-    if (!n) return;
+    if (!n) return 0;
     const before = levelInfo().level;
     const t = LA.today();
     const todayBefore = state.days[t] || 0;
-    inc(doc.xp, n);
+    const gained = Math.round(n * xpBoost().mult);
+    inc(doc.xp, gained);
     inc(doc.days[t] || (doc.days[t] = {}), n);
     pruneDays(doc);
     save();
@@ -390,6 +405,7 @@
       award('goal');
     }
     checkBadges();
+    return gained;
   }
 
   const todayXP = () => state.days[LA.today()] || 0;
@@ -648,12 +664,18 @@
   /* ---------- Wochen-Quests & Tagesfrage ----------
    * Welche Quests gelten und wann sie geschafft sind, steht in js/core/challenges.js. Hier nur das
    * Abhaken: einmal je Woche und Quest, die XP-Belohnung gibt es mit dem Abhaken. */
+  /** Liefert die gutgeschriebenen XP (samt Serien-Boost) oder 0, wenn schon abgehakt */
   function claimQuest(key, xp) {
-    if (state.quests[key]) return false;
+    if (state.quests[key]) return 0;
     doc.quests[key] = LA.today();
     save();
-    addXP(xp);
-    return true;
+    return addXP(xp);
+  }
+
+  /** Ein Favoriten-Test wurde zu Ende gespielt (für die Wochen-Quest) */
+  function favTestDone() {
+    bump('favtests');
+    save();
   }
   const questDone = (key) => state.quests[key] || null;
 
@@ -755,7 +777,7 @@
   LA.store = {
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
-    levelInfo, streak, streakInfo, useJoker, addXP, todayXP, topic, visit, lessonResult, best, testResult,
+    levelInfo, streak, streakInfo, useJoker, xpBoost, addXP, favTestDone, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer,

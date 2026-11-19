@@ -106,6 +106,7 @@
   text-decoration: none;
   font-weight: 700;
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 .tstat:hover {
   background: var(--surface-2);
@@ -118,6 +119,16 @@
 }
 .tstat-ring {
   display: inline-flex;
+}
+.tstat-boost {
+  padding: 1px 4px;
+  background: var(--p3);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.tstat-boost[hidden] {
+  display: none;
 }
 .tstat-level {
   border-right: 1px solid var(--border);
@@ -133,6 +144,9 @@
   .tstat {
     padding: 5px 8px;
     font-size: 0.82rem;
+  }
+  .tstat-bolt {
+    display: none;
   }
   .top-actions .icon-btn:nth-child(-n + 2) {
     display: none;
