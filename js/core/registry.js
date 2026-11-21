@@ -260,7 +260,23 @@
     return [...k.filter((cid) => !(edits[cid] || {}).hidden), ...LA.store.ownCards(id).map((c) => c.id)];
   };
 
+  /** Lektion einer Karte aus topics/meta.js (kl) geschafft? Neue Karten kommen erst danach in eine Runde.
+   *  Eigene Karten und Karten ohne Zuordnung gelten als freigeschaltet. */
+  const klMaps = new WeakMap();
+  LA.cardUnlocked = (topicId, cardId) => {
+    const m = LA.meta.topics[topicId];
+    if (!m || !m.k || !m.kl) return true;
+    let map = klMaps.get(m);
+    if (!map) klMaps.set(m, (map = new Map(m.k.map((cid, i) => [cid, m.kl[i]]))));
+    const li = map.get(cardId);
+    const lid = li == null ? null : (m.l[li] || [])[0];
+    if (!lid) return true;
+    const t = LA.store.get().topics[topicId];
+    return !!(t && t.lessons[lid] && t.lessons[lid].done);
+  };
+
   /** Karten im Stapel dieser Themen heute – ohne Inhalte zu laden: { due, fresh, open, dueNow, newNow, size }.
+   *  fresh = neue Karten aus geschafften Lektionen (LA.cardUnlocked).
    *  open = alle offenen Karten (fällig + neu), unabhängig von der Rundengröße – diese Zahl zeigen die Symbole.
    *  dueNow/newNow/size = was eine Runde „Lernen starten“ bringt: fällige zuerst, der Rest wird mit neuen
    *  aufgefüllt (size ≤ Rundengröße). Gleiche Karte in mehreren Themen zählt einmal; eine Karte mit Fach
@@ -271,7 +287,7 @@
     const started = new Set();
     topicIds.forEach((id) => Object.keys(LA.store.topic(id).cards).forEach((cid) => started.add(cid)));
     const fresh = new Set();
-    topicIds.forEach((id) => (cardIdsOf(id) || []).forEach((cid) => !started.has(cid) && fresh.add(cid)));
+    topicIds.forEach((id) => (cardIdsOf(id) || []).forEach((cid) => !started.has(cid) && LA.cardUnlocked(id, cid) && fresh.add(cid)));
     const max = LA.store.roundSize();
     const dueNow = Math.min(due, max);
     const newNow = Math.min(fresh.size, max - dueNow);

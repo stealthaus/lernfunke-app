@@ -21,17 +21,18 @@
   function classify(cards) {
     const today = LA.today();
     const boxes = [0, 0, 0, 0, 0];
-    const due = [], fresh = [];
+    const due = [], fresh = [], locked = [];
     cards.forEach((c) => {
       const cs = LA.store.cardState(c._topic, c.id);
-      if (!cs) fresh.push(c);
+      // Neue Karten erst, wenn ihre Lektion geschafft ist
+      if (!cs) (LA.cardUnlocked(c._topic, c.id) ? fresh : locked).push(c);
       else {
         boxes[cs.box - 1]++;
         if (cs.due <= today) due.push({ ...c, box: cs.box });
       }
     });
     // Wacklige Fächer zuerst, innerhalb eines Fachs gemischt (im Reise-Stapel: Themen durcheinander)
-    return { boxes, due: LA.shuffle(due).sort((a, b) => a.box - b.box), fresh };
+    return { boxes, due: LA.shuffle(due).sort((a, b) => a.box - b.box), fresh, locked };
   }
 
   function leitnerViz(boxes, freshCount) {
@@ -177,7 +178,7 @@
       setKeys(null);
       LA.app.setFocus(false);
       const all = o.deck();
-      const { boxes, due, fresh } = classify(all);
+      const { boxes, due, fresh, locked } = classify(all);
       const max = LA.store.roundSize();
       const dueNow = due.slice(0, max);
       // Neue Karten zufällig aus dem ganzen Stapel – im Reise-Stapel also aus allen Stationen
@@ -202,7 +203,8 @@
         o.kicker ? h('div', { class: 'cards-kicker' }, icon('route'), o.kicker) : null,
         h('h1', null, 'Karteikarten'),
         h('p', { class: 'muted' }, o.intro || 'Gewusste Karten wandern ein Fach weiter und kommen seltener dran. Nicht gewusste starten wieder in Fach 1. So wiederholst du genau das, was du gerade zu vergessen drohst.'),
-        leitnerViz(boxes, fresh.length),
+        leitnerViz(boxes, fresh.length + locked.length),
+        locked.length ? h('p', { class: 'muted' }, `${LA.plural(locked.length, 'neue Karte wartet', 'neue Karten warten')} auf Lektionen, die du noch nicht geschafft hast.`) : null,
         h('div', { class: 'cards-cta card' }, cta,
           all.length ? h('div', { class: 'cards-round' },
             h('span', { class: 'muted', id: 'round-label' }, 'Karten pro Runde'),
@@ -480,14 +482,14 @@
       const active = on.has(t.id);
       // Abgewählte Stationen zeigen ihren eigenen Stapel, aktive den Anteil am Reise-Stapel
       const cards = active ? deck.filter((c) => c._topic === t.id) : LA.topicCards(t);
-      const { boxes, due, fresh } = classify(cards);
+      const { boxes, due, fresh, locked } = classify(cards);
       const box = h('input', { type: 'checkbox', checked: active, 'aria-label': `${t.title} einbeziehen` });
       box.addEventListener('change', () => pick(box.checked ? [...on, t.id] : [...on].filter((x) => x !== t.id)));
       return h('label', { class: 'ds-row' + (active ? '' : ' off') },
         box,
         h('span', { class: 'ds-icon' }, LA.glyph(t.icon || 'book')),
         h('span', { class: 'ds-title' }, h('span', { class: 'ds-num' }, `${i + 1}.`), ' ', t.title),
-        h('span', { class: 'ds-bar' }, seg(fresh.length, 'var(--muted)', 'Neu'), boxes.map((n, b) => seg(n, `var(--box-${b + 1})`, `Fach ${b + 1}`))),
+        h('span', { class: 'ds-bar' }, seg(fresh.length + locked.length, 'var(--muted)', 'Neu'), boxes.map((n, b) => seg(n, `var(--box-${b + 1})`, `Fach ${b + 1}`))),
         h('span', { class: 'ds-meta' }, due.length ? h('strong', null, `${due.length} fällig`) : LA.plural(cards.length, 'Karte', 'Karten')));
     });
 
