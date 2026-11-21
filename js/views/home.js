@@ -121,8 +121,21 @@
         h('span', { class: 'ch-state' }, done ? 'Geschafft' : `+${wk.questXP} XP`));
     });
     const allDone = wk.list.every((q) => q.done || q.reached);
+    // Sync-Token läuft bald ab: erinnern, bevor der Abgleich (am iPhone: die ganze App) ausfällt
+    const exp = LA.sync && LA.sync.tokenExpiry();
+    const tokenRow = exp && exp.warn
+      ? h('a', { class: 'ch-row ch-token', href: '#/profil' },
+        h('span', { class: 'ch-num' }, icon('alert')),
+        h('span', { class: 'ch-text' },
+          h('strong', null, LA.sync.expiryText(exp)),
+          h('span', { class: 'ch-sub' }, exp.daysLeft < 0
+            ? 'Der Abgleich klappt nicht mehr. Leg auf GitHub einen neuen Token an und trag ihn im Profil ein.'
+            : 'Leg auf GitHub einen neuen Token an und trag ihn im Profil ein – auf jedem Gerät.')),
+        h('span', { class: 'ch-state' }, 'Profil', icon('arrowRight')))
+      : null;
     return h('section', { class: 'challenges' },
       h('div', { class: 'section-head' }, h('h2', null, 'Heute & diese Woche')),
+      tokenRow,
       daily,
       h('div', { class: 'ch-kicker' },
         h('strong', null, 'Wochen-Quests'),

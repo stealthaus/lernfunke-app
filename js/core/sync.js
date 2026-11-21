@@ -6,7 +6,8 @@
  *    LA.remote ist true, Katalog und Themen kommen mit dem Token über die GitHub-API aus dem privaten Repo.
  * Der Fortschritt liegt als progress.json auf dem Branch `fortschritt` (jeder Sync ist ein Commit –
  * so bleibt main sauber). Zusammengeführt wird mit LA.store.merge, deshalb geht nichts verloren.
- * Token und Repo stehen nur im localStorage des jeweiligen Browsers.
+ * Token, Repo und Ablaufdatum des Tokens stehen nur im localStorage des jeweiligen Browsers.
+ * Das Ablaufdatum trägt der Nutzer selbst ein: GitHub gibt den Header mit dem Ablauf nicht per CORS frei.
  *
  * Schneller Start: Nichts wartet auf den Fortschritts-Abgleich – die App zeichnet sofort mit dem lokalen
  * Stand und zeichnet die Ansicht neu, falls vom anderen Gerät etwas kommt. Online liegen Katalog, Metadaten
@@ -59,6 +60,8 @@
   const fromBase64 = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
 
   function describe(e) {
+    const exp = tokenExpiry();
+    if (e.status === 401 && exp && exp.daysLeft < 0) return `Token am ${exp.label} abgelaufen – leg einen neuen an`;
     if (e.status === 401) return 'Token ungültig oder abgelaufen';
     if (e.status === 403) return 'Token darf das nicht (nötig: Contents – Read and write)';
     if (e.status === 404) return 'Repo nicht gefunden oder kein Zugriff';
@@ -66,7 +69,27 @@
     return e.message;
   }
 
-   /* ---------- Inhalte (nur online) ---------- */
+  /* ---------- Ablauf des Tokens ----------
+   * Fine-grained Tokens laufen ab. Das Datum steht in cfg.expires ('YYYY-MM-DD'), eingetragen beim Verbinden.
+   * Ab WARN_DAYS Tagen vorher erinnern Startseite und Profil daran. */
+  const WARN_DAYS = 14;
+  const fmtDate = (d) => d.split('-').reverse().join('.');
+  /** { date, label, daysLeft, warn } oder null (nicht verbunden / kein Datum). daysLeft < 0: abgelaufen.
+   *  GitHub nimmt den Token bis zum Ende des Ablauftags an, am Ablauftag ist daysLeft also 0. */
+  function tokenExpiry(conf = cfg) {
+    if (!conf || !/^\d{4}-\d{2}-\d{2}$/.test(conf.expires || '')) return null;
+    const daysLeft = LA.daysBetween(LA.today(), conf.expires);
+    return { date: conf.expires, label: fmtDate(conf.expires), daysLeft, warn: daysLeft <= WARN_DAYS };
+  }
+  /** Kurzer Text zum Ablauf, z. B. für Profil und Startseite */
+  function expiryText(exp) {
+    if (exp.daysLeft < 0) return `Token am ${exp.label} abgelaufen`;
+    if (exp.daysLeft === 0) return 'Token läuft heute ab';
+    if (exp.daysLeft === 1) return 'Token läuft morgen ab';
+    return `Token gültig bis ${exp.label} (noch ${exp.daysLeft} Tage)`;
+  }
+
+  /* ---------- Inhalte (nur online) ---------- */
   const fetchText = (path) => gh('/contents/' + path, { raw: true });
 
   /* Cache für Inhalte: Schlüssel = Pfad + Hash. Ohne Cache API (oder wenn sie scheitert) einfach immer laden. */
@@ -99,12 +122,23 @@
     return text;
   }
 
-  /** Quelltext wie eine <script>-Datei im globalen Scope ausführen */
+  /** Quelltext wie eine <script>-Datei im globalen Scope ausführen. Über eine blob:-URL statt eines
+   *  Inline-Skripts – so braucht die Content Security Policy (index.html) kein 'unsafe-inline'.
+   *  Liefert ein Promise, das nach dem Ausführen erfüllt ist. */
   function run(src, name) {
-    const s = document.createElement('script');
-    s.textContent = src + '\n//# sourceURL=' + name;
-    document.head.appendChild(s);
-    s.remove();
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(new Blob([src + '\n//# sourceURL=' + name], { type: 'text/javascript' }));
+      const s = document.createElement('script');
+      const done = (ok) => {
+        URL.revokeObjectURL(url);
+        s.remove();
+        ok ? resolve() : reject(new Error(name + ' konnte nicht ausgeführt werden'));
+      };
+      s.onload = () => done(true);
+      s.onerror = () => done(false);
+      s.src = url;
+      document.head.appendChild(s);
+    });
   }
 
   /* ---------- Fortschritt ---------- */
@@ -221,7 +255,9 @@
   /* ---------- Verbinden ---------- */
   function connectForm(onDone) {
     const repo = h('input', { class: 'ce-input', id: 'sync-repo', value: (cfg && cfg.repo) || DEFAULT_REPO, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', required: true });
-    const token = h('input', { class: 'ce-input', id: 'sync-token', type: 'password', autocomplete: 'off', placeholder: 'github_pat_…', required: true });
+    // Schon verbunden: Token leer lassen = bisherigen behalten (z. B. nur das Ablaufdatum nachtragen)
+    const token = h('input', { class: 'ce-input', id: 'sync-token', type: 'password', autocomplete: 'off', placeholder: cfg ? 'leer lassen = bisheriger Token' : 'github_pat_…', required: !cfg });
+    const expires = h('input', { class: 'ce-input', id: 'sync-expires', type: 'date', value: (cfg && cfg.expires) || '', min: LA.today() });
     const error = h('p', { class: 'sync-error', role: 'alert', hidden: true });
     const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Verbinden');
     const form = h('form', { class: 'sync-form' },
@@ -229,14 +265,19 @@
       h('p', { class: 'muted' }, 'Inhalte und Fortschritt liegen in deinem privaten GitHub-Repo. Den Token gibst du auf jedem Gerät einmal ein – er bleibt nur in diesem Browser.'),
       h('div', { class: 'ce-field' }, h('label', { class: 'ce-label', for: 'sync-repo' }, 'Repo'), repo),
       h('div', { class: 'ce-field' }, h('label', { class: 'ce-label', for: 'sync-token' }, 'Token'), token),
+      h('div', { class: 'ce-field' }, h('label', { class: 'ce-label', for: 'sync-expires' }, 'Token läuft ab am'), expires),
       h('p', { class: 'muted sync-hint' },
         h('a', { href: TOKEN_URL, target: '_blank', rel: 'noopener' }, 'Fine-grained Token anlegen'),
-        ': nur dieses Repo, Berechtigung „Contents: Read and write“.'),
+        ': nur dieses Repo, Berechtigung „Contents: Read and write“, Ablauf z. B. 90 Tage. Das Datum steht danach bei deinem Token auf GitHub – die App erinnert dich zwei Wochen vorher.'),
       error,
       h('div', { class: 'modal-actions' }, submit));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const conf = { repo: repo.value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, ''), token: token.value.trim() };
+      const newToken = token.value.trim();
+      const conf = { repo: repo.value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, ''), token: newToken || (cfg && cfg.token) || '' };
+      if (expires.value) conf.expires = expires.value;
+      // neuer Token ohne neues Datum: altes Datum gilt nicht mehr
+      else if (!newToken && cfg && cfg.expires) conf.expires = cfg.expires;
       submit.disabled = true;
       submit.textContent = 'Prüfe …';
       error.hidden = true;
@@ -305,10 +346,10 @@
   const META = 'topics/meta.js';
 
   /** Neuen Katalog bzw. neue Metadaten übernehmen; geänderte Themen fliegen aus dem Speicher */
-  function applyContent(catalogSrc, metaSrc) {
+  async function applyContent(catalogSrc, metaSrc) {
     const before = LA.meta.topics;
-    if (metaSrc) run(metaSrc, META);
-    if (catalogSrc) run(catalogSrc, CATALOG);
+    if (metaSrc) await run(metaSrc, META);
+    if (catalogSrc) await run(catalogSrc, CATALOG);
     Object.keys(LA.topics).forEach((id) => {
       const now = LA.meta.topics[id];
       if (!now || !before[id] || now.h !== before[id].h) delete LA.topics[id];
@@ -323,7 +364,7 @@
     const metaHash = (/"catalog":"(\w+)"/.exec(metaSrc) || [])[1];
     const catalogSrc = cached && metaHash && cached.metaHash === metaHash && cached.catalog ? null : await fetchText(CATALOG);
     if (cached && cached.meta === metaSrc && (catalogSrc == null || catalogSrc === cached.catalog)) return false;
-    applyContent(catalogSrc, metaSrc);
+    await applyContent(catalogSrc, metaSrc);
     if (!LA.catalog.length) throw new Error('Der Katalog ist leer oder fehlerhaft');
     cachePut(META, 'aktuell', metaSrc);
     if (catalogSrc != null) cachePut(CATALOG, 'aktuell', catalogSrc);
@@ -345,7 +386,7 @@
     if (catalog) {
       const metaHash = (/"catalog":"(\w+)"/.exec(meta || '') || [])[1];
       try {
-        applyContent(catalog, meta);
+        await applyContent(catalog, meta);
       } catch (e) {}
       if (LA.catalog.length) {
         refreshContent({ catalog, meta: meta || '', metaHash }).then((changed) => changed && refreshView(), (e) => console.warn('Inhalte nicht aktualisiert', e));
@@ -372,10 +413,15 @@
       h('div', null, h('strong', null, 'Geräte-Sync'), h('div', { class: 'muted' }, 'Teile deinen Fortschritt über ein privates GitHub-Repo mit deinen anderen Geräten.')),
       h('button', { class: 'btn btn-soft', type: 'button', onclick: connectDialog }, icon('link'), 'Einrichten'));
     if (!cfg) return { el: off, destroy() {} };
+    const exp = tokenExpiry();
+    const expLine = exp
+      ? h('div', { class: 'muted sync-expiry' + (exp.warn ? ' is-warn' : '') }, icon(exp.warn ? 'alert' : 'calendar'), expiryText(exp))
+      : h('div', { class: 'muted sync-expiry' }, icon('calendar'), 'Ablaufdatum des Tokens unbekannt – trag es unter „Token ändern“ ein');
     const el = h('div', { class: 'setting' },
-      h('div', null, h('strong', null, 'Geräte-Sync'), h('div', { class: 'muted' }, cfg.repo), line),
+      h('div', null, h('strong', null, 'Geräte-Sync'), h('div', { class: 'muted' }, cfg.repo), line, expLine),
       h('div', { class: 'btn-row' },
         h('button', { class: 'btn btn-soft', type: 'button', onclick: () => sync() }, icon('refresh'), 'Jetzt abgleichen'),
+        h('button', { class: 'btn btn-soft', type: 'button', onclick: connectDialog }, icon('key'), 'Token ändern'),
         h('button', { class: 'btn btn-ghost danger-text', type: 'button', onclick: disconnect }, 'Trennen')));
     show(status);
     listeners.add(show);
@@ -383,7 +429,7 @@
   }
 
   LA.sync = {
-    ready, sync, settingRow, connectDialog, fetchText, cachedText, run,
+    ready, sync, settingRow, connectDialog, fetchText, cachedText, run, tokenExpiry, expiryText,
     connected: () => !!cfg,
     status: () => status,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),

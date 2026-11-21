@@ -97,10 +97,9 @@
     if (LA.remote) {
       // Online-Fassung: Inhalt über die GitHub-API aus dem privaten Repo – aus dem Cache, solange der Hash
       // in topics/meta.js passt (js/core/sync.js)
-      LA.sync.cachedText(path, (LA.meta.topics[id] || {}).h).then((src) => {
-        LA.sync.run(src, path);
-        if (pending[id]) fail(); // Skript lief, hat sich aber nicht registriert
-      }, fail);
+      LA.sync.cachedText(path, (LA.meta.topics[id] || {}).h)
+        .then((src) => LA.sync.run(src, path))
+        .then(() => pending[id] && fail(), fail); // Skript lief, hat sich aber nicht registriert
       return promise;
     }
     const script = document.createElement('script');

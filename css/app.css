@@ -1110,6 +1110,15 @@ a.ch-row:hover {
   border: 2px solid var(--rule);
   margin-bottom: 20px;
 }
+/* Hinweis: Sync-Token läuft ab – Warnfläche mit Warnsymbol */
+.ch-token {
+  border: 2px solid var(--warn);
+  background: var(--warn-bg);
+  margin-bottom: 12px;
+}
+a.ch-token:hover {
+  background: var(--warn-bg);
+}
 .ch-num {
   display: inline-flex;
   font-weight: 700;
@@ -2332,6 +2341,16 @@ button.back-link {
   background: var(--bad-bg);
   color: var(--bad);
   font-weight: 650;
+}
+/* Ablauf des Sync-Tokens: bald fällig = Warnfarbe + Warnsymbol (nicht nur Farbe) */
+.sync-expiry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sync-expiry.is-warn {
+  color: var(--warn);
+  font-weight: 700;
 }
 .sync-status {
   display: flex;

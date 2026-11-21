@@ -2,6 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
+  <!-- Content Security Policy: nur eigene Skripte (blob: = Themen der Online-Fassung, js/core/sync.js), Netz nur zur GitHub-API.
+       Das Inline-Skript unten ist per Hash erlaubt – nach jeder Änderung daran den Hash neu setzen (tests/csp.test.js prüft das). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file: blob: 'sha256-mjKpri4WP60auRTzX2TTCVlrD4XPdOvahtl6M9jTN3g='; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Lernfunke</title>
   <meta name="description" content="Lernfunke – kurze Erklärungen mit Grafiken, Quiz und Mini-Spiele.">
