@@ -240,7 +240,8 @@
     }
 
     function record(step, res) {
-      if (!step._retry) results.set(step._key || step.type + idx, { score: res.score, correct: res.correct, graded: res.graded !== false, raw: res });
+      const key = step._key || step.type + idx;
+      if (!step._retry) results.set(key, { key, score: res.score, correct: res.correct, graded: res.graded !== false, raw: res });
     }
 
     function show() {

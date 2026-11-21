@@ -251,6 +251,33 @@
     return sr.topics.filter((id) => LA.catalogEntry(id) && !off.includes(id));
   };
 
+  /** Karten-IDs eines Themas wie in LA.topicCards: aus dem geladenen Thema, sonst aus topics/meta.js (k)
+   *  plus eigene Karten, ohne ausgeblendete. null, wenn weder Thema noch IDs da sind. */
+  const cardIdsOf = (id) => {
+    if (LA.topics[id]) return LA.topicCards(LA.topics[id]).map((c) => c.id);
+    const k = (LA.meta.topics[id] || {}).k;
+    if (!k) return null;
+    const edits = LA.store.cardEdits(id);
+    return [...k.filter((cid) => !(edits[cid] || {}).hidden), ...LA.store.ownCards(id).map((c) => c.id)];
+  };
+
+  /** Was „Lernen starten“ im Stapel dieser Themen heute bringt – ohne Inhalte zu laden:
+   *  { due, fresh, dueNow, newNow, size }. Wie im Kartentrainer: fällige zuerst, der Rest der Runde wird mit neuen
+   *  aufgefüllt (size ≤ Rundengröße). Gleiche Karte in mehreren Themen zählt einmal; eine Karte mit Fach
+   *  in irgendeinem der Themen ist nicht neu (wie LA.seriesCards). Fehlen die IDs eines Themas, zählen
+   *  nur seine fälligen Karten. */
+  LA.cardsToday = (topicIds) => {
+    const due = LA.store.dueCount(topicIds);
+    const started = new Set();
+    topicIds.forEach((id) => Object.keys(LA.store.topic(id).cards).forEach((cid) => started.add(cid)));
+    const fresh = new Set();
+    topicIds.forEach((id) => (cardIdsOf(id) || []).forEach((cid) => !started.has(cid) && fresh.add(cid)));
+    const max = LA.store.roundSize();
+    const dueNow = Math.min(due, max);
+    const newNow = Math.min(fresh.size, max - dueNow);
+    return { due, fresh: fresh.size, dueNow, newNow, size: dueNow + newNow };
+  };
+
   LA.setSeriesCardTopics = (sr, ids) => {
     const all = { ...(LA.store.setting('cardsOff') || {}) };
     all[sr.id] = sr.topics.filter((id) => !ids.includes(id));

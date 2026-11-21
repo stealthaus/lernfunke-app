@@ -117,6 +117,16 @@
 .tstat-emoji {
   display: inline-flex;
 }
+/* Flamme der Lernserie: heute noch offen = grauer Umriss, heute gelernt = gefüllt in Orange */
+.tstat-streak .tstat-emoji {
+  color: var(--muted);
+}
+.tstat.is-lit .tstat-emoji {
+  color: var(--c3);
+}
+.tstat.is-lit .tstat-emoji svg {
+  fill: currentColor;
+}
 .tstat-ring {
   display: inline-flex;
 }
@@ -2343,16 +2353,34 @@ button.back-link {
 }
 
 /* ---------- Lab-Liste ---------- */
+/* Karteikarten der Reise: Symbol + Zahl der Karten für heute (Text nur für Screenreader) */
 .sc-cards {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
   text-decoration: none;
   color: var(--text);
+  font-weight: 700;
 }
-.sc-cards .sc-due {
-  margin-left: 2px;
+.sc-cards:hover {
+  background: var(--surface-2);
+}
+.sc-cards-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
   padding: 0 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sc-cards.has-due .sc-cards-n {
+  background: var(--bad-strong);
+  color: #fff;
 }
 .sc-lab {
   display: inline-flex;

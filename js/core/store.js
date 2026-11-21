@@ -14,6 +14,7 @@
  *    Wochen-Quests und Tagesfrage. Zähler wie oben; blitz (Tagesbestwert) und dq (Tagesfrage: 1 falsch,
  *    2 richtig) zählen als Maximum statt Summe. Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
  *  · Joker { 'YYYY-MM-DD': 'YYYY-MM-DD' } – gehaltener Tag → Einsatzdatum, frühestes Datum gewinnt.
+ *  · Tagesfrage zum Wiederholen dqRetry { [Fragen-ID]: { v: { topic, day } | null, t } } – wie Einzelwerte.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
 (function () {
   'use strict';
@@ -78,6 +79,7 @@
     act: {}, // 'YYYY-MM-DD' → { reviews, lessons, perfect, games, dq, blitz, favtests } je Gerät
     quests: {}, // 'Montag der Woche|quest-id' → Datum, an dem die Quest geschafft wurde
     jokers: {}, // 'YYYY-MM-DD' (gehaltener Tag) → Datum, an dem der Joker eingesetzt wurde
+    dqRetry: {}, // Fragen-ID → { v: { topic, day: Tag der falschen Antwort } | null, t } – kommt am Folgetag wieder
   });
   const freshTopic = () => ({ lessons: {}, cards: {}, games: {}, test: null, favs: {}, cardEdits: {}, ownCards: {}, labs: {} });
   /** Fehlende Felder ergänzen (Dokument von einem Gerät mit älterer App-Fassung) */
@@ -146,6 +148,7 @@
       act: both(a.act, b.act, (x, y) => both(x, y, maxG)),
       quests: both(a.quests, b.quests, minStr),
       jokers: both(a.jokers, b.jokers, minStr),
+      dqRetry: both(a.dqRetry, b.dqRetry, lww),
     };
     pruneDays(d);
     return clone(d);
@@ -225,6 +228,7 @@
       act,
       quests: { ...d.quests },
       jokers: { ...d.jokers },
+      dqRetry: Object.entries(live(d.dqRetry)).map(([qid, r]) => ({ qid, ...r })).sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0)),
       notes: Object.entries(live(d.notes)).map(([id, n]) => ({ id, ...n })).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)),
     };
   }
@@ -245,7 +249,8 @@
     for (const k in s.settings || {}) d.settings[k] = r0(s.settings[k]);
     d.lastTopic = r0(s.lastTopic || null);
     d.badges = { ...s.badges };
-    // Notizen, Tagesaktivität, Quests und Joker gab es in v1 noch nicht – bleiben leer
+    // Notizen, Tagesaktivität, Quests, Joker und Tagesfragen zum Wiederholen gab es in v1 noch nicht – bleiben leer
+    d.dqRetry = {};
     for (const id in s.topics || {}) {
       const o = s.topics[id];
       const t = (d.topics[id] = freshTopic());
@@ -680,8 +685,18 @@
   const questDone = (key) => state.quests[key] || null;
 
   /** Tagesfrage beantwortet (zählt einmal pro Tag; richtig gewinnt über falsch) */
-  function dailyAnswer(correct) {
+  /** Neue Tagesfrage beantwortet. Falsch → sie kommt ab morgen zum Wiederholen (q: { topic, qid }). */
+  function dailyAnswer(correct, q) {
     bump('dq', correct ? 2 : 1);
+    if (!correct && q && q.qid) doc.dqRetry[q.qid] = reg({ topic: q.topic, day: LA.today() });
+    save();
+  }
+
+  /** Wiederholte Tagesfrage beantwortet: richtig → erledigt, falsch → morgen noch einmal */
+  function dailyRetry(qid, correct) {
+    const cur = state.dqRetry.find((r) => r.qid === qid);
+    if (!cur) return;
+    doc.dqRetry[qid] = reg(correct ? null : { topic: cur.topic, day: LA.today() });
     save();
   }
 
@@ -780,7 +795,7 @@
     levelInfo, streak, streakInfo, useJoker, xpBoost, addXP, favTestDone, todayXP, topic, visit, lessonResult, best, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
-    notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer,
+    notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer, dailyRetry,
     BADGES, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,
     doc: () => doc, applyDoc, merge, canon, device,

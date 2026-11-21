@@ -504,40 +504,52 @@
 
   /* ---------- Tagesfrage ----------
    * Eine Frage pro Tag aus einer früher geschafften Lektion (js/core/challenges.js). Richtig: doppelte XP.
-   * Zählt einmal pro Tag – danach zeigt die Seite nur noch, dass sie erledigt ist. */
+   * Falsch beantwortete Fragen kommen am nächsten Tag zuerst noch einmal, danach die neue Frage.
+   * Ist alles beantwortet, zeigt die Seite nur noch, dass sie erledigt ist. */
   LA.views.daily = async () => {
     const dq = LA.challenges.daily();
-    const q = dq.answered ? null : await LA.challenges.dailyQuestion();
-    if (!q) {
+    const qs = dq.answered ? [] : await LA.challenges.dailyQuestions();
+    if (!qs.length) {
       return {
         el: h('div', { class: 'page' },
           h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
           h('h1', null, 'Tagesfrage'),
-          h('p', { class: 'muted' }, dq.answered
+          h('p', { class: 'muted' }, dq.newAnswered
             ? 'Heute schon beantwortet – morgen gibt es die nächste.'
             : 'Sobald du eine Lektion geschafft hast, gibt es hier ab dem nächsten Tag jeden Tag eine Frage daraus.'),
           h('a', { class: 'btn btn-soft', href: '#/' }, 'Zur Startseite')),
       };
     }
-    LA.current = { topic: q.topic };
+    const first = qs[0].topic;
+    LA.current = { topic: first };
     const player = LA.createPlayer({
-      topic: q.topic,
-      steps: [q.step],
+      topic: first,
+      // eindeutige Schlüssel: die Fragen können aus verschiedenen Themen kommen
+      steps: qs.map((q, i) => ({ ...q.step, _key: 'dq-' + i, _topic: q.topic.id })),
       showTopic: true,
       onExit: () => LA.router.go('#/'),
       result(sum) {
-        const correct = !!(sum.results[0] && sum.results[0].correct);
-        LA.store.dailyAnswer(correct);
-        if (correct) sum.gain(dq.bonus);
+        let right = 0, wrong = 0;
+        qs.forEach((q, i) => {
+          const res = sum.results.find((r) => r.key === 'dq-' + i);
+          const correct = !!(res && res.correct);
+          if (q.retry) LA.store.dailyRetry(q.retry, correct);
+          if (q.isNew) LA.store.dailyAnswer(correct, { topic: q.topic.id, qid: q.step._qid });
+          correct ? right++ : wrong++;
+        });
+        if (right) sum.gain(dq.bonus * right);
+        const many = qs.length > 1;
         return {
-          glyph: correct ? 'bulb' : 'book',
-          title: correct ? 'Sitzt!' : 'Fast – jetzt weißt du es',
-          subtitle: correct ? 'Doppelte XP für die Tagesfrage. Morgen gibt es die nächste.' : 'Lies dir die Erklärung oben noch einmal durch. Morgen gibt es eine neue Frage.',
-          stats: [{ label: 'XP', value: '+' + sum.xp }],
-          noConfetti: !correct,
+          glyph: wrong ? 'book' : 'bulb',
+          title: !wrong ? 'Sitzt!' : right ? 'Teils geschafft' : 'Fast – jetzt weißt du es',
+          subtitle: !wrong
+            ? (many ? 'Doppelte XP für jede richtige Antwort. Morgen gibt es die nächste Frage.' : 'Doppelte XP für die Tagesfrage. Morgen gibt es die nächste.')
+            : `Lies dir die Erklärung oben noch einmal durch. Morgen kommt ${wrong > 1 ? 'jede falsche Frage' : 'die Frage'} noch einmal – und dazu eine neue.`,
+          stats: [{ label: 'XP', value: '+' + sum.xp }, ...(many ? [{ label: 'Richtig', value: `${right}/${qs.length}` }] : [])],
+          noConfetti: !!wrong,
           actions: [
             { label: 'Zur Startseite', primary: true, href: '#/' },
-            { label: 'Zum Thema', href: `#/t/${q.topic.id}` },
+            { label: 'Zum Thema', href: `#/t/${first.id}` },
           ],
         };
       },

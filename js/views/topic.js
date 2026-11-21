@@ -103,7 +103,7 @@
               h('span', { class: 'tag' }, `~${topic.lessons.reduce((a, l) => a + lessonMinutes(l), 0)} min`)),
             topic.intro ? h('div', { class: 'md th-intro', html: LA.md(topic.intro) }) : null)),
         h('section', { class: 'action-grid' },
-          action(`#/t/${id}/karten`, 'cards', 'Karteikarten', (due ? `${due} fällig · ${fresh} neu` : `${cards.length} Karten · ${fresh} neu`) + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), due || null),
+          action(`#/t/${id}/karten`, 'cards', 'Karteikarten', (due ? `${due} fällig · ${fresh} neu` : `${cards.length} Karten · ${fresh} neu`) + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), LA.cardsToday([id]).size || null),
           action(`#/t/${id}/spiele`, 'gamepad', 'Spielhalle', 'Zuordnen, Blitzrunde'),
           action(`#/t/${id}/test`, 'target', 'Abschlusstest',
             (tState.test ? `Bestwert ${Math.round(tState.test.best * 100)} %` : 'Gemischte Fragen aus allen Lektionen') +

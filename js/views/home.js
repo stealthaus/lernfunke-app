@@ -93,15 +93,20 @@
     const dq = LA.challenges.daily();
     const wk = LA.challenges.week();
     const topic = dq.topicId && LA.catalogEntry(dq.topicId);
-    const daily = topic
+    // offen: Wiederholungen (zuerst) und/oder die neue Frage – je richtige Antwort 10 XP + Bonus
+    const open = dq.retries + (dq.newAnswered || !topic ? 0 : 1);
+    const sub = dq.answered
+      ? `${dq.correct ? 'Richtig beantwortet' : 'Beantwortet'} – morgen gibt es die nächste.`
+      : dq.retries
+        ? `${dq.retries > 1 ? `${dq.retries} Fragen von neulich kommen` : 'Die Frage von neulich kommt'} noch einmal${dq.newAnswered || !topic ? '' : ` – danach eine neue aus „${topic.title}“`}.`
+        : topic ? `Aus „${topic.title}“ – eine Frage aus einer Lektion, die schon etwas zurückliegt.` : '';
+    const daily = topic || dq.retries
       ? h(dq.answered ? 'div' : 'a', { class: 'ch-row ch-daily' + (dq.answered ? ' done' : ''), href: dq.answered ? null : '#/tagesfrage' },
-        h('span', { class: 'ch-num' }, icon(dq.answered ? 'check' : 'bulb')),
+        h('span', { class: 'ch-num' }, icon(dq.answered ? 'check' : dq.retries ? 'refresh' : 'bulb')),
         h('span', { class: 'ch-text' },
-          h('strong', null, 'Tagesfrage'),
-          h('span', { class: 'ch-sub' }, dq.answered
-            ? `${dq.correct ? 'Richtig beantwortet' : 'Beantwortet'} – morgen gibt es die nächste.`
-            : `Aus „${topic.title}“ – eine Frage aus einer Lektion, die schon etwas zurückliegt.`)),
-        h('span', { class: 'ch-state' }, dq.answered ? 'Erledigt' : `+${10 + dq.bonus} XP`, dq.answered ? null : icon('arrowRight')))
+          h('strong', null, dq.retries && !dq.answered ? 'Tagesfrage · Wiederholung' : 'Tagesfrage'),
+          h('span', { class: 'ch-sub' }, sub)),
+        h('span', { class: 'ch-state' }, dq.answered ? 'Erledigt' : `+${open * (10 + dq.bonus)} XP`, dq.answered ? null : icon('arrowRight')))
       : null;
     const quests = wk.list.map((q, i) => {
       const done = q.done || q.reached;
@@ -191,7 +196,10 @@
     const pct = total ? done / total : 0;
     const favN = stations.reduce((a, t) => a + LA.store.favCount(t.id), 0);
     const labN = stations.reduce((a, t) => a + LA.store.labCount(t.id), 0);
-    const dueN = LA.store.dueCount(LA.seriesCardTopics(sr));
+    const today = LA.cardsToday(LA.seriesCardTopics(sr));
+    const cardsLabel = today.size
+      ? `Karteikarten: ${today.size} für heute (${today.dueNow} fällig, ${today.newNow} neu)`
+      : 'Karteikarten: alles erledigt für heute';
     const archived = isArchived(sr);
     const next = stations[nextIdx];
 
@@ -209,13 +217,13 @@
     toggle.addEventListener('click', (e) => (e.stopPropagation(), flip()));
     setState(isOpen(sr));
 
-    // Kurzinfo für die zugeklappte Reise: nächste Station und fällige Karten
+    // Kurzinfo für die zugeklappte Reise: nächste Station und Karten für heute (fällige + neue, wie „Lernen starten“)
     const peek = h('div', { class: 'sc-peek' },
       next
         ? h('a', { class: 'sc-next', href: `#/t/${next.id}` }, `${progs[nextIdx].done ? 'Weiter' : 'Nächste Station'}: `, h('strong', null, `${nextIdx + 1}. ${next.title}`), icon('arrowRight'))
         : h('span', { class: 'sc-next' }, icon('check'), 'Alle Stationen geschafft'),
-      h('a', { class: 'sc-count sc-cards', href: `#/r/${sr.id}/karten`, title: dueN ? `${dueN} Karten fällig` : 'Karteikarten der Lernreise' }, icon('cards'), 'Karteikarten',
-        dueN ? h('span', { class: 'sc-due' }, `${dueN} fällig`) : null),
+      h('a', { class: 'sc-cards' + (today.size ? ' has-due' : ''), href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'),
+        h('span', { class: 'sc-cards-n', 'aria-hidden': 'true' }, today.size ? String(today.size) : icon('check'))),
       labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
     const head = h('div', { class: 'sc-head' },
@@ -272,8 +280,8 @@
       })),
       h('div', { class: 'sc-actions' },
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/test` }, icon('target'), 'Reise-Test'),
-        h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/karten`, title: dueN ? `${dueN} Karten fällig` : null }, icon('cards'), 'Karteikarten',
-          dueN ? h('span', { class: 'sc-count sc-due' }, dueN) : null),
+        h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'), 'Karteikarten',
+          today.size ? h('span', { class: 'sc-count sc-due', 'aria-hidden': 'true' }, today.size) : null),
         labN ? h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Übungen fürs Terminal' }, icon('laptop'), 'Labs', h('span', { class: 'sc-count' }, labN)) : null,
         favN
           ? h('a', { class: 'btn btn-soft sc-fav', href: `#/r/${sr.id}/test?nur=favoriten` }, icon('heart'), 'Favoriten-Test', h('span', { class: 'sc-count' }, favN))
@@ -552,7 +560,7 @@
         h('div', null, h('dt', null, 'Längste Serie'), h('dd', null, LA.plural(si.best, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–')),
         h('div', null, h('dt', null, 'XP-Boost'), h('dd', null, boostText()))),
-      h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er zählt fürs Level; dein Tagesziel misst weiter die XP ohne Boost.`));
+      h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er beschleunigt nur dein Level. Leichter wird dadurch nichts: Das Tagesziel zählt die XP ohne Boost, und die Serie hält jeder Tag, an dem du lernst.`));
 
     function boostText() {
       const b = LA.store.xpBoost();

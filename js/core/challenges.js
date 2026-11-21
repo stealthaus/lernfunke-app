@@ -124,7 +124,9 @@
 
   /* ---------- Tagesfrage ----------
    * Eine Frage pro Tag aus einem Thema, das du länger nicht angefasst hast – nur aus Lektionen, die
-   * schon vor heute geschafft waren (so bleibt die Wahl den ganzen Tag gleich). Richtig: doppelte XP. */
+   * schon vor heute geschafft waren (so bleibt die Wahl den ganzen Tag gleich). Richtig: doppelte XP.
+   * Falsch beantwortet → am nächsten Tag kommt sie zuerst noch einmal, danach die neue Frage. Eine
+   * Wiederholung bleibt, bis sie sitzt (store.dqRetry). */
   const DAILY_BONUS = 10; // zusätzlich zu den 10 XP für eine richtige Antwort
 
   /** Lektionen eines Themas, die vor heute abgeschlossen wurden: { lessonId: at } */
@@ -158,10 +160,15 @@
     return pick(seeded('daily|' + today), cands.slice(0, 3)).id;
   }
 
-  /** Stand der Tagesfrage: { topicId, answered, correct, bonus } */
+  /** Wiederholungen, die heute dran sind: vor heute falsch beantwortet, älteste zuerst */
+  const retriesDue = () => LA.store.get().dqRetry.filter((r) => r.day < LA.today() && LA.catalogEntry(r.topic));
+
+  /** Stand der Tagesfrage: { topicId, answered, correct, bonus, retries }
+   *  answered: die neue Frage ist beantwortet und keine Wiederholung mehr offen */
   function daily() {
     const dq = LA.store.activity(LA.today()).dq || 0;
-    return { topicId: dailyTopicId(), answered: dq > 0, correct: dq === 2, bonus: DAILY_BONUS };
+    const retries = retriesDue();
+    return { topicId: dailyTopicId(), answered: dq > 0 && !retries.length, newAnswered: dq > 0, correct: dq === 2, bonus: DAILY_BONUS, retries: retries.length };
   }
 
   /** Die Frage selbst (lädt das Thema): Schritt oder null */
@@ -177,6 +184,29 @@
       .filter((s) => LA.isTestable(s.type));
     if (!pool.length) return null;
     return { topic, step: pick(seeded('dq|' + today + '|' + id), pool) };
+  }
+
+  /** Alle Fragen für heute (lädt die Themen): erst die Wiederholungen, dann die neue Frage, falls noch offen.
+   *  [{ topic, step, retry, isNew }] – retry: Fragen-ID der Wiederholung, isNew: die neue Frage von heute.
+   *  Gibt es eine Frage nicht mehr, entfällt sie. */
+  async function dailyQuestions() {
+    const out = [];
+    for (const r of retriesDue()) {
+      let topic = null;
+      try {
+        topic = await LA.loadTopic(r.topic);
+      } catch (e) {}
+      const step = topic && [...topic.lessons.flatMap((l) => l.steps), ...(topic.exam || [])].find((s) => s._qid === r.qid);
+      if (step) out.push({ topic, step, retry: r.qid });
+      else LA.store.dailyRetry(r.qid, true);
+    }
+    if (!(LA.store.activity(LA.today()).dq > 0)) {
+      const q = await dailyQuestion();
+      const same = q && out.find((x) => x.step._qid === q.step._qid);
+      if (same) same.isNew = true; // neue Frage = Wiederholung: einmal fragen, zählt für beides
+      else if (q) out.push({ ...q, retry: null, isNew: true });
+    }
+    return out;
   }
 
   /* ---------- Gedächtnis-Wert ----------
@@ -213,5 +243,5 @@
     return { pct: total ? score / total : 0, topics };
   }
 
-  LA.challenges = { weekStart, week, check, daily, dailyQuestion, memoryOf, memoryAll };
+  LA.challenges = { weekStart, week, check, daily, dailyQuestion, dailyQuestions, memoryOf, memoryAll };
 })();

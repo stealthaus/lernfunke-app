@@ -62,7 +62,7 @@
     h('div', { class: 'topbar-inner' },
       h('a', { class: 'brand', href: '#/' }, brandMark(), h('span', { class: 'brand-name' }, 'Lernfunke')),
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
-        h('a', { class: 'tstat', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl, boostEl),
+        h('a', { class: 'tstat tstat-streak', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl, boostEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, h('span', { class: 'tstat-emoji tstat-bolt' }, icon('bolt')), todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level – der Ring zeigt, wie weit es bis zum nächsten ist' }, ringBox, levelEl)),
       h('div', { class: 'top-actions' }, soundBtn, themeBtn, LA.notes.button(),
@@ -73,11 +73,13 @@
     const si = LA.store.streakInfo();
     streakEl.textContent = si.days;
     streakEl.parentElement.classList.toggle('dim', !si.days);
+    // Flamme: gefüllt und farbig, sobald heute gelernt wurde – sonst nur Umriss (Form + Farbe, nicht nur Farbe)
+    streakEl.parentElement.classList.toggle('is-lit', si.learnedToday);
     const boost = LA.store.xpBoost();
     const boostTxt = boost.mult > 1 ? '×' + LA.fmtMult(boost.mult) : '';
     boostEl.textContent = boostTxt;
     boostEl.hidden = !boostTxt;
-    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}${boostTxt ? `, XP-Boost ${boostTxt}` : ''}, ${si.left} von ${si.perMonth} Jokern übrig`);
+    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}, heute ${si.learnedToday ? 'geschafft' : 'noch offen'}${boostTxt ? `, XP-Boost ${boostTxt}` : ''}, ${si.left} von ${si.perMonth} Jokern übrig`);
     const today = LA.store.todayXP();
     todayEl.textContent = `${today} XP`;
     todayEl.parentElement.setAttribute('aria-label', `Heute ${today} von ${st.goal} XP`);
