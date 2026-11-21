@@ -260,8 +260,9 @@
     return [...k.filter((cid) => !(edits[cid] || {}).hidden), ...LA.store.ownCards(id).map((c) => c.id)];
   };
 
-  /** Was „Lernen starten“ im Stapel dieser Themen heute bringt – ohne Inhalte zu laden:
-   *  { due, fresh, dueNow, newNow, size }. Wie im Kartentrainer: fällige zuerst, der Rest der Runde wird mit neuen
+  /** Karten im Stapel dieser Themen heute – ohne Inhalte zu laden: { due, fresh, open, dueNow, newNow, size }.
+   *  open = alle offenen Karten (fällig + neu), unabhängig von der Rundengröße – diese Zahl zeigen die Symbole.
+   *  dueNow/newNow/size = was eine Runde „Lernen starten“ bringt: fällige zuerst, der Rest wird mit neuen
    *  aufgefüllt (size ≤ Rundengröße). Gleiche Karte in mehreren Themen zählt einmal; eine Karte mit Fach
    *  in irgendeinem der Themen ist nicht neu (wie LA.seriesCards). Fehlen die IDs eines Themas, zählen
    *  nur seine fälligen Karten. */
@@ -274,7 +275,7 @@
     const max = LA.store.roundSize();
     const dueNow = Math.min(due, max);
     const newNow = Math.min(fresh.size, max - dueNow);
-    return { due, fresh: fresh.size, dueNow, newNow, size: dueNow + newNow };
+    return { due, fresh: fresh.size, open: due + fresh.size, dueNow, newNow, size: dueNow + newNow };
   };
 
   LA.setSeriesCardTopics = (sr, ids) => {

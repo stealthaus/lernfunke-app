@@ -210,8 +210,8 @@
     const favN = stations.reduce((a, t) => a + LA.store.favCount(t.id), 0);
     const labN = stations.reduce((a, t) => a + LA.store.labCount(t.id), 0);
     const today = LA.cardsToday(LA.seriesCardTopics(sr));
-    const cardsLabel = today.size
-      ? `Karteikarten: ${today.size} für heute (${today.dueNow} fällig, ${today.newNow} neu)`
+    const cardsLabel = today.open
+      ? `Karteikarten: ${today.open} offen (${today.due} fällig, ${today.fresh} neu)`
       : 'Karteikarten: alles erledigt für heute';
     const archived = isArchived(sr);
     const next = stations[nextIdx];
@@ -235,8 +235,8 @@
       next
         ? h('a', { class: 'sc-next', href: `#/t/${next.id}` }, `${progs[nextIdx].done ? 'Weiter' : 'Nächste Station'}: `, h('strong', null, `${nextIdx + 1}. ${next.title}`), icon('arrowRight'))
         : h('span', { class: 'sc-next' }, icon('check'), 'Alle Stationen geschafft'),
-      h('a', { class: 'sc-cards' + (today.size ? ' has-due' : ''), href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'),
-        h('span', { class: 'sc-cards-n', 'aria-hidden': 'true' }, today.size ? String(today.size) : icon('check'))),
+      h('a', { class: 'sc-cards' + (today.open ? ' has-due' : ''), href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'),
+        h('span', { class: 'sc-cards-n', 'aria-hidden': 'true' }, today.open ? String(today.open) : icon('check'))),
       labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
     const head = h('div', { class: 'sc-head' },
@@ -294,7 +294,7 @@
       h('div', { class: 'sc-actions' },
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/test` }, icon('target'), 'Reise-Test'),
         h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'), 'Karteikarten',
-          today.size ? h('span', { class: 'sc-count sc-due', 'aria-hidden': 'true' }, today.size) : null),
+          today.open ? h('span', { class: 'sc-count sc-due', 'aria-hidden': 'true' }, today.open) : null),
         labN ? h('a', { class: 'btn btn-soft', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Übungen fürs Terminal' }, icon('laptop'), 'Labs', h('span', { class: 'sc-count' }, labN)) : null,
         favN
           ? h('a', { class: 'btn btn-soft sc-fav', href: `#/r/${sr.id}/test?nur=favoriten` }, icon('heart'), 'Favoriten-Test', h('span', { class: 'sc-count' }, favN))
