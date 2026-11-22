@@ -1,5 +1,5 @@
 /* ==========================================================
-   Lernfunke – Seiten: Kopfzeile, Start, Thema, Profil, Spielhalle
+   Lernfunke – Seiten: Kopfzeile, Bereiche, Start, Reisen, Thema, Ich
    ========================================================== */
 
 #main {
@@ -1656,47 +1656,6 @@ a.ch-token:hover {
   background: var(--warn-bg);
   color: var(--warn);
   box-shadow: var(--shadow-sm), inset 0 0 0 2px var(--warn);
-}
-
-/* ---------- Spielhalle & Karteikarten-Übersicht ---------- */
-.game-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-.game-tile {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-a.game-tile:hover {
-  transform: translateY(-3px) rotate(-0.5deg);
-  box-shadow: var(--shadow);
-}
-.game-tile.disabled {
-  opacity: 0.5;
-}
-.gt-icon {
-  font-size: 2.6rem;
-  margin-bottom: 8px;
-}
-.game-tile p {
-  font-size: 0.9rem;
-}
-.gt-foot {
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--accent-text);
 }
 
 .leitner {

@@ -28,6 +28,9 @@
   const KEEP_DAYS = 400;
   const KEEP_ACT_DAYS = 400; // Tagesaktivität: Quests brauchen die laufende Woche, die Statistik ein Jahr
   const KEEP_QUEST_WEEKS = 12;
+  /** Stufen fürs Tagesziel (XP). Ein älterer, kleinerer Wert zählt als die nächsthöhere Stufe (100 → 150). */
+  const GOALS = [150, 300, 500, 800];
+  const goalOf = (v) => GOALS.find((g) => g >= v) || v;
   const ACT_MAX = ['blitz', 'dq', 'due']; // Tagesaktivität: Maximum statt Summe
 
   const readLS = (key) => {
@@ -71,7 +74,7 @@
     xp: {},
     days: {}, // 'YYYY-MM-DD' → Zähler
     stats: { lessons: {}, perfect: {}, reviews: {}, games: {}, blitzBest: 0 },
-    goal: { v: 50, t: 0 },
+    goal: { v: 150, t: 0 },
     settings: {}, // Schlüssel → { v, t }; fehlt einer, gilt DEFAULT_SETTINGS
     lastTopic: { v: null, t: 0 },
     badges: {},
@@ -213,7 +216,7 @@
     return {
       xp: sum(d.xp),
       days,
-      goal: d.goal.v,
+      goal: goalOf(d.goal.v),
       topics,
       badges: { ...d.badges },
       stats: {
@@ -464,18 +467,6 @@
     save();
     checkBadges();
     return !prev;
-  }
-
-  /** Bestwert speichern; gibt true zurück, wenn es ein neuer Rekord ist. */
-  function best(topicId, key, value, lowerIsBetter) {
-    const t = dt(topicId);
-    const prev = t.games[key];
-    const better = !prev || (lowerIsBetter ? value < prev.v : value > prev.v);
-    if (better) t.games[key] = { v: value, lo: !!lowerIsBetter };
-    inc(doc.stats.games);
-    bump('games');
-    save();
-    return better && !!prev;
   }
 
   function testResult(topicId, pct) {
@@ -768,8 +759,6 @@
     { id: 'level5', icon: 'rocket', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
     { id: 'level10', icon: 'chartUp', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
     { id: 'cards50', icon: 'cards', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
-    { id: 'blitz', icon: 'bolt', title: 'Blitzmerker', desc: '200 Punkte in der Blitzrunde', test: (s) => s.stats.blitzBest >= 200 },
-    { id: 'gamer', icon: 'gamepad', title: 'Spielkind', desc: '10 Mini-Spiele gespielt', test: (s) => s.stats.games >= 10 },
     { id: 'master', icon: 'cap', title: 'Themen-Meister', desc: 'Alle Lektionen eines Themas abgeschlossen', count: topicsMastered },
     { id: 'ace', icon: 'trophy', title: 'Prüfungsass', desc: '100 % im Abschlusstest', count: (s) => Object.values(s.topics).filter((t) => t.test && t.test.best >= 1).length },
   ];
@@ -793,13 +782,6 @@
 
   function checkBadges() {
     for (const b of BADGES) if (b.test && !state.badges[b.id] && b.test(state)) award(b.id);
-  }
-
-  function setBlitz(score) {
-    if (score > doc.stats.blitzBest) doc.stats.blitzBest = score;
-    bump('blitz', score);
-    save();
-    checkBadges();
   }
 
   /* ---------- Einstellungen & Datensicherung ---------- */
@@ -853,11 +835,11 @@
   LA.store = {
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
-    levelInfo, streak, streakInfo, useJoker, xpBoost, addXP, favTestDone, todayXP, topic, visit, lessonResult, best, testResult,
+    levelInfo, streak, streakInfo, useJoker, xpBoost, addXP, favTestDone, todayXP, topic, visit, lessonResult, testResult,
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, recordDue, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer, dailyRetry,
-    BADGES, badgeCount, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
+    BADGES, badgeCount, award, setting, setGoal, GOALS, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,
     doc: () => doc, applyDoc, merge, canon, device,
   };

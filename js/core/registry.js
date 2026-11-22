@@ -339,29 +339,6 @@
     LA.store.setting('cardsOff', all);
   };
 
-  /** Begriffspaare für Zuordnen (bevorzugt kurze Definitionen) */
-  LA.topicPairs = (topic) => {
-    const pairs = topic.glossary.map((g) => [g.term, g.short || g.def]);
-    (topic.pairs || []).forEach((p) => pairs.push(p));
-    return pairs;
-  };
-
-  /** Aussagen für die Blitzrunde: Wahr/Falsch-Schritte, topic.statements und generierte Glossar-Aussagen */
-  LA.topicStatements = (topic) => {
-    const list = [];
-    topic.lessons.forEach((l) => l.steps.forEach((st) => st.type === 'truefalse' && list.push({ text: st.statement, answer: st.answer })));
-    (topic.statements || []).forEach((st) => list.push(st));
-    const g = topic.glossary.filter((x) => x.short || x.def.length < 90);
-    g.forEach((entry, i) => {
-      list.push({ text: `**${entry.term}:** ${entry.short || entry.def}`, answer: true });
-      if (g.length > 1) {
-        const other = g[(i + 1 + Math.floor(Math.random() * (g.length - 1))) % g.length];
-        list.push({ text: `**${entry.term}:** ${other.short || other.def}`, answer: false });
-      }
-    });
-    return list;
-  };
-
   LA.findTerm = (topic, term) => {
     if (!topic) return null;
     const key = term.toLowerCase();

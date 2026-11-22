@@ -44,9 +44,10 @@
       value: (w) => w.days.filter((d) => st().days[d] > 0).length },
     { id: 'daily', group: 'daily', targets: [3, 4, 5], text: (n) => `Beantworte ${n} Tagesfragen`, needsDaily: true,
       value: (w) => w.days.filter((d) => LA.store.activity(d).dq > 0).length },
-    { id: 'blitz', group: 'games', targets: [100, 150], text: (n) => `Hol ${n} Punkte in einer Blitzrunde`,
+    // Spielhalle entfernt: Spiel-Quests nur noch in Wochen vor dem 23.11.2026 (die laufende Woche würfelt nicht neu)
+    { id: 'blitz', group: 'games', targets: [100, 150], until: '2026-11-23', text: (n) => `Hol ${n} Punkte in einer Blitzrunde`,
       value: (w) => Math.max(0, ...w.days.map((d) => LA.store.activity(d).blitz || 0)) },
-    { id: 'games', group: 'games', targets: [2, 3], text: (n) => `Spiele ${n} Mini-Spiele`,
+    { id: 'games', group: 'games', targets: [2, 3], until: '2026-11-23', text: (n) => `Spiele ${n} Mini-Spiele`,
       value: (w) => w.sum('games') },
     { id: 'xp', group: 'xp', targets: [250, 350], text: (n) => `Sammle ${n} XP`,
       value: (w) => w.days.reduce((a, d) => a + (st().days[d] || 0), 0) },
@@ -74,7 +75,7 @@
     const cards = QUESTS.filter((q) => q.group === 'cards');
     const chosen = [pick(rnd, cards)];
     const hasFavs = favsBefore(start) >= FAV_MIN;
-    let rest = QUESTS.filter((q) => q.group !== 'cards' && (!q.since || q.since <= start)
+    let rest = QUESTS.filter((q) => q.group !== 'cards' && (!q.since || q.since <= start) && (!q.until || start < q.until)
       && (!q.needsDaily || hasDaily) && (!q.needsFavs || hasFavs));
     while (chosen.length < 3 && rest.length) {
       const q = pick(rnd, rest);

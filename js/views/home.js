@@ -683,7 +683,7 @@
         h('section', { class: 'card settings' },
           h('h2', null, 'Lernen'),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Tagesziel'), h('div', { class: 'muted' }, 'Wie viele XP möchtest du pro Tag sammeln?')),
-            LA.ui.segmented([[20, 'Locker · 20'], [50, 'Normal · 50'], [100, 'Ehrgeizig · 100'], [200, 'Intensiv · 200']], st.goal, (v) => LA.store.setGoal(v))),
+            LA.ui.segmented(LA.store.GOALS.map((g, i) => [g, `${['Locker', 'Normal', 'Ehrgeizig', 'Intensiv'][i]} · ${g}`]), st.goal, (v) => LA.store.setGoal(v))),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Karteikarten pro Runde'), h('div', { class: 'muted' }, 'Wie viele Karten eine Lernrunde höchstens hat – fällige zuerst, der Rest wird mit neuen aufgefüllt.')),
             LA.ui.roundSizePicker((v) => LA.store.setting('roundSize', v))),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Notizen'), h('div', { class: 'muted' },

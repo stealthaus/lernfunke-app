@@ -103,7 +103,6 @@
           action(`#/t/${id}/karten`, 'cards', 'Karteikarten',
             (paused ? `${LA.plural(cards.length, 'Karte', 'Karten')} · pausiert (Reise im Archiv)` : today.open ? LA.cardsText(today) : LA.plural(cards.length, 'Karte', 'Karten'))
             + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), paused ? null : today.open || null),
-          action(`#/t/${id}/spiele`, 'gamepad', 'Spielhalle', 'Zuordnen, Blitzrunde'),
           action(`#/t/${id}/test`, 'target', 'Abschlusstest',
             (tState.test ? `Bestwert ${Math.round(tState.test.best * 100)} %` : 'Gemischte Fragen aus allen Lektionen') +
             (favN ? ` · ${LA.plural(favN, 'Favorit', 'Favoriten')}` : '')),

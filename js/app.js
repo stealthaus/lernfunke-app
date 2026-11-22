@@ -14,8 +14,6 @@
     [/^\/t\/([^/]+)$/, 'topic', ['id']],
     [/^\/t\/([^/]+)\/l\/([^/]+)$/, 'lesson', ['id', 'lessonId']],
     [/^\/t\/([^/]+)\/karten$/, 'cards', ['id']],
-    [/^\/t\/([^/]+)\/spiele$/, 'arcade', ['id']],
-    [/^\/t\/([^/]+)\/spiele\/([^/]+)$/, 'game', ['id', 'game']],
     [/^\/t\/([^/]+)\/test$/, 'test', ['id']],
     [/^\/t\/([^/]+)\/glossar$/, 'glossary', ['id']],
     [/^\/t\/([^/]+)\/nachlesen$/, 'reader', ['id']],

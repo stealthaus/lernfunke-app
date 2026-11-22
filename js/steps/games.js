@@ -1,5 +1,5 @@
 /* Spielerische Schritt-Typen: match, flashcards (melden sich selbst fertig)
- * und hotspots (Grafik erkunden). Werden auch in der Spielhalle wiederverwendet. */
+ * und hotspots (Grafik erkunden). Die Flip-Karte nutzen auch die Karteikarten. */
 (function () {
   'use strict';
   const LA = window.LA;
