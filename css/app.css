@@ -161,6 +161,112 @@ body.focus-mode .topbar {
   display: none;
 }
 
+/* ---------- Bereiche: Heute · Karten · Reisen · Ich ----------
+   Am Rechner in der Kopfzeile, am Handy fest am unteren Rand. Aktiver Bereich: fett, schwarze Kante
+   und aria-current – nicht nur per Farbe. Im Fokus-Modus (Lektion, Kartenrunde) verschwindet sie mit der Kopfzeile. */
+.tabbar {
+  display: flex;
+  align-self: stretch;
+}
+.tabbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 0.95rem;
+  box-shadow: inset 0 -4px 0 transparent;
+}
+.tabbar a:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tabbar a.on {
+  color: var(--text);
+  font-weight: 800;
+  box-shadow: inset 0 -4px 0 var(--rule);
+}
+.tabbar .ic {
+  width: 20px;
+  height: 20px;
+}
+@media (min-width: 721px) {
+  .brand {
+    margin-right: 8px;
+  }
+  .tabbar {
+    margin-right: auto;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) {
+  .brand-name {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg);
+    border-top: 2px solid var(--rule);
+  }
+  .tabbar a {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: 6px 4px;
+    font-size: 0.75rem;
+    box-shadow: inset 0 4px 0 transparent;
+  }
+  .tabbar a.on {
+    box-shadow: inset 0 4px 0 var(--rule);
+  }
+  .tabbar .ic {
+    width: 24px;
+    height: 24px;
+  }
+  /* Platz für die Leiste, damit nichts dahinter verschwindet */
+  body:not(.focus-mode) #main {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Umschalter oben im Reiter „Ich“ */
+.segmented.ich-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 20px;
+}
+.segmented a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 7px 12px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.segmented a.on {
+  background: var(--surface);
+  color: var(--text);
+}
+.st-lead {
+  margin: 0 0 12px;
+  max-width: var(--measure);
+}
+
 /* ---------- Start ---------- */
 /* Fahrplan-Kopf: Datumszeile, XP von heute als große Zahl mit Legende, darunter die rote „Jetzt“-Zeile */
 .home-hero {
@@ -1216,69 +1322,6 @@ a.ch-token:hover {
     grid-template-columns: 1fr 1fr;
     gap: 12px 16px;
   }
-}
-.xp-chart {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 170px;
-  padding-bottom: 22px;
-}
-.xp-col {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-}
-.xp-bar {
-  width: 100%;
-  max-width: 34px;
-  min-height: 3px;
-  border-radius: 0;
-  background: var(--surface-3);
-  transition: height 0.6s ease;
-}
-.xp-bar.hit {
-  background: var(--accent);
-}
-.xp-col.today .xp-bar {
-  outline: 2px solid var(--accent-line);
-  outline-offset: 2px;
-}
-.xp-joker {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  max-width: 34px;
-  padding: 4px 0;
-  border: 1px dashed var(--border-strong);
-  color: var(--text);
-}
-.xp-day {
-  position: absolute;
-  bottom: -22px;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-.xp-goal-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 2px dashed var(--accent-line);
-  pointer-events: none;
-  z-index: 1;
-}
-.xp-goal-line span {
-  position: absolute;
-  left: 0;
-  top: -20px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--accent-text);
 }
 /* Joker-Angebot (Startseite und Serie & Joker): Pastellfläche wie ein bereiter Joker, Knopf als Nebenaktion */
 .joker-offer {
@@ -2748,9 +2791,6 @@ a.note-where:hover span {
 
 /* Statistik: Säulen mit schwarzer Kontur, Pastell als Fläche (Mint = wiederholt, Himmel = neu),
  * schwarzer Strich = fällig. Zahlen stehen zusätzlich im title, in der Legende und in den Kennzahlen. */
-.profile-stats-link {
-  margin-top: 16px;
-}
 .st-head {
   display: flex;
   flex-wrap: wrap;

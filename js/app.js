@@ -7,8 +7,10 @@
   const ROUTES = [
     [/^\/?$/, 'home', []],
     [/^\/profil$/, 'profile', []],
-    [/^\/statistik$/, 'stats', []],
-    [/^\/themen$/, 'allTopics', []],
+    [/^\/statistik$/, 'profile', []], // Statistik steht jetzt auf der Seite „Fortschritt“
+    [/^\/einstellungen$/, 'settings', []],
+    [/^\/reisen$/, 'journeys', []],
+    [/^\/themen$/, 'journeys', []],
     [/^\/t\/([^/]+)$/, 'topic', ['id']],
     [/^\/t\/([^/]+)\/l\/([^/]+)$/, 'lesson', ['id', 'lessonId']],
     [/^\/t\/([^/]+)\/karten$/, 'cards', ['id']],
@@ -53,16 +55,34 @@
   const boostEl = h('span', { class: 'tstat-boost' });
   const levelEl = h('span');
   const ringBox = h('span', { class: 'tstat-ring' });
+  /* Feste Navigation: am Handy unten am Rand (Daumen), am Rechner in der Kopfzeile */
+  const TABS = [['heute', '#/', 'home', 'Heute'], ['karten', '#/karten', 'cards', 'Karten'], ['reisen', '#/reisen', 'route', 'Reisen'], ['ich', '#/profil', 'user', 'Ich']];
+  const tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Bereiche' },
+    TABS.map(([key, href, ic, label]) => h('a', { href, 'data-tab': key }, icon(ic), h('span', null, label))));
   const header = h('header', { class: 'topbar' },
     h('div', { class: 'topbar-inner' },
       h('a', { class: 'brand', href: '#/' }, brandMark(), h('span', { class: 'brand-name' }, 'Lernfunke')),
+      tabbar,
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
         h('a', { class: 'tstat tstat-streak', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl, boostEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level – der Ring zeigt, wie weit es bis zum nächsten ist' }, ringBox, levelEl)),
-      h('div', { class: 'top-actions' },
-        h('a', { class: 'icon-btn', href: '#/karten', 'aria-label': 'Alle Karteikarten', title: 'Alle Karteikarten' }, icon('cards')),
-        LA.notes.button(),
-        h('a', { class: 'icon-btn', href: '#/profil', 'aria-label': 'Profil & Einstellungen' }, icon('user')))));
+      h('div', { class: 'top-actions' }, LA.notes.button())));
+
+  /** Reiter der Ansicht: jede Seite gehört zu genau einem Bereich */
+  const TAB_OF = {
+    home: 'heute', daily: 'heute',
+    allCards: 'karten', seriesCards: 'karten', cards: 'karten',
+    profile: 'ich', settings: 'ich', notes: 'ich',
+  };
+  function setTab(view) {
+    const key = TAB_OF[view] || (view ? 'reisen' : null);
+    tabbar.querySelectorAll('a').forEach((a) => {
+      const on = a.dataset.tab === key;
+      a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
+  }
 
   function updateHeader() {
     const si = LA.store.streakInfo();
@@ -118,6 +138,7 @@
     current = view;
     LA.current = { topic: route && route.params.id ? LA.topics[route.params.id] || null : null };
     LA.app.setFocus(!!view.focus);
+    setTab(route && route.view);
     main.replaceChildren(view.el);
     window.scrollTo(0, keep ? y : 0);
     const topic = LA.current.topic;

@@ -458,7 +458,7 @@
     return cardTrainer({
       kicker: `Lernreise · ${sr.title}`,
       intro: 'Alle Karten der Reise in einem Stapel, bunt gemischt. Die Fächer sind dieselben wie in den einzelnen Themen – was du hier wiederholst, zählt auch dort.',
-      back: { href: '#/', label: 'Startseite', done: 'Zur Startseite' },
+      back: { href: '#/karten', label: 'Alle Karteikarten', done: 'Zu allen Karteikarten' },
       multi: true,
       deck: (opts) => LA.seriesCards(selected(), opts),
       topics: selected,
@@ -496,7 +496,6 @@
 
     return {
       el: h('div', { class: 'page cards-page' },
-        h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
         h('h1', null, 'Alle Karteikarten'),
         h('p', { class: 'muted' }, 'Jede Lernreise hat ihren eigenen Stapel. Tipp eine Reise an, um ihre Karten zu lernen – die Fächer sind dieselben wie in den Themen.'),
         h('div', { class: 'cards-cta card' },

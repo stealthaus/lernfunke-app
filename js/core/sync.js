@@ -71,7 +71,7 @@
 
   /* ---------- Ablauf des Tokens ----------
    * Fine-grained Tokens laufen ab. Das Datum steht in cfg.expires ('YYYY-MM-DD'), eingetragen beim Verbinden.
-   * Ab WARN_DAYS Tagen vorher erinnern Startseite und Profil daran. */
+   * Ab WARN_DAYS Tagen vorher erinnern Startseite und Einstellungen daran. */
   const WARN_DAYS = 14;
   const fmtDate = (d) => d.split('-').reverse().join('.');
   /** { date, label, daysLeft, warn } oder null (nicht verbunden / kein Datum). daysLeft < 0: abgelaufen.
@@ -81,7 +81,7 @@
     const daysLeft = LA.daysBetween(LA.today(), conf.expires);
     return { date: conf.expires, label: fmtDate(conf.expires), daysLeft, warn: daysLeft <= WARN_DAYS };
   }
-  /** Kurzer Text zum Ablauf, z. B. für Profil und Startseite */
+  /** Kurzer Text zum Ablauf, z. B. für Einstellungen und Startseite */
   function expiryText(exp) {
     if (exp.daysLeft < 0) return `Token am ${exp.label} abgelaufen`;
     if (exp.daysLeft === 0) return 'Token läuft heute ab';
@@ -401,7 +401,7 @@
     }
   }
 
-  /** Zeile für die Einstellungen im Profil */
+  /** Zeile für die Seite „Einstellungen“ (Reiter „Ich“) */
   function settingRow() {
     const text = h('span');
     const show = (s) => {

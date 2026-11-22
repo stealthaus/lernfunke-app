@@ -1,4 +1,4 @@
-/* Statistik-Seite: Karteikarten pro Tag (fällig und geschafft), Vorschau der fälligen Karten,
+/* Statistik (Abschnitt der Seite „Fortschritt“): Karteikarten pro Tag (fällig und geschafft), Vorschau der fälligen Karten,
  * Lektionen pro Tag – jeweils mit Trend gegenüber dem Zeitraum davor. Zahlen aus js/core/stats.js. */
 (function () {
   'use strict';
@@ -142,8 +142,7 @@
 
   function forecastSection(sum) {
     const fc = LA.stats.forecast(14);
-    const ids = LA.catalog.map((t) => t.id);
-    const fresh = LA.cardsToday(ids).fresh;
+    const fresh = LA.cardsToday(LA.cardTopics()).fresh;
     const cols = fc.days.map((x, i) => ({
       label: String(+x.day.slice(8)),
       today: i === 0,
@@ -204,12 +203,13 @@
       ]));
   }
 
-  LA.views.stats = () => {
+  /** Statistik als Abschnitt der Seite „Fortschritt“ (#/profil): Zeitraum, Karten pro Tag, Vorschau, Lektionen.
+   *  Die große Zahl der Seite ist das Level – hier steht der Schnitt als Satz. */
+  LA.ui.statsSections = () => {
     LA.store.recordDue();
     const n = range;
     const sum = LA.stats.summary(n);
     const s = LA.stats.starts();
-    const today = LA.cardsToday(LA.cardTopics());
 
     const picker = LA.ui.segmented(RANGES.map((r) => [r, `${r} Tage`]), n, (v) => {
       range = v;
@@ -221,26 +221,11 @@
     picker.setAttribute('role', 'group');
     picker.setAttribute('aria-label', 'Zeitraum');
 
-    return {
-      el: h('div', { class: 'page stats' },
-        h('a', { class: 'back-link', href: '#/profil' }, icon('arrowLeft'), 'Profil'),
-        h('section', { class: 'profile-hero' },
-          h('h1', { class: 'sr-only' }, 'Statistik'),
-          h('div', { class: 'hh-figure', 'aria-hidden': 'true' },
-            h('span', { class: 'hh-giant' }, fmt(sum.avgReviews || 0)),
-            h('span', { class: 'hh-legend' },
-              h('span', { class: 'hh-unit' }, 'Karten pro Tag'),
-              h('span', null, `Ø der letzten ${n} Tage`),
-              h('span', null, heroTrend(sum.trend.reviews, n)))),
-          h('p', { class: 'sr-only' }, `Im Schnitt ${fmt(sum.avgReviews)} Karteikarten pro Tag in den letzten ${n} Tagen. ${heroTrend(sum.trend.reviews, n)}.`),
-          h('div', { class: 'st-head' },
-            today.open
-              ? h('a', { class: 'btn btn-primary', href: '#/karten' }, icon('cards'), `Karten lernen: ${LA.cardsText(today)}`)
-              : h('a', { class: 'btn btn-soft', href: '#/karten' }, icon('cards'), 'Alle Karteikarten'),
-            picker)),
-        cardsSection(sum, s, n),
-        forecastSection(sum),
-        lessonsSection(sum, s, n)),
-    };
+    return h('div', { class: 'stats', id: 'statistik' },
+      h('div', { class: 'section-head st-head' }, h('h2', null, 'Statistik'), picker),
+      h('p', { class: 'st-lead' }, h('strong', null, `Ø ${fmt(sum.avgReviews || 0)} Karten pro Tag`), ` in den letzten ${n} Tagen · ${heroTrend(sum.trend.reviews, n)}`),
+      cardsSection(sum, s, n),
+      forecastSection(sum),
+      lessonsSection(sum, s, n));
   };
 })();

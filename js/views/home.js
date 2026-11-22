@@ -1,4 +1,4 @@
-/* Startseite (Themenübersicht) und Profil (Serie, Abzeichen, Einstellungen – Statistik in stats.js). */
+/* Reiter Heute (Startseite), Reisen (alle Lernreisen und Themen) und Ich (Fortschritt, Einstellungen – Statistik in stats.js). */
 (function () {
   'use strict';
   const LA = window.LA;
@@ -74,7 +74,7 @@
     return h('section', { class: 'home-hero' },
       h('h1', { class: 'sr-only' }, 'Lernfunke – Startseite'),
       h('div', { class: 'hh-line' }, h('span', null, date)),
-      h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge, ${si.left} Joker übrig. Statistik und Abzeichen öffnen` },
+      h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge, ${si.left} Joker übrig. Fortschritt öffnen` },
         h('span', { class: 'hh-giant', 'aria-hidden': 'true' }, String(todayXP)),
         h('span', { class: 'hh-legend', 'aria-hidden': 'true' },
           h('span', { class: 'hh-unit' }, 'XP heute'),
@@ -146,14 +146,14 @@
     // Sync-Token läuft bald ab: erinnern, bevor der Abgleich (am iPhone: die ganze App) ausfällt
     const exp = LA.sync && LA.sync.tokenExpiry();
     const tokenRow = exp && exp.warn
-      ? h('a', { class: 'ch-row ch-token', href: '#/profil' },
+      ? h('a', { class: 'ch-row ch-token', href: '#/einstellungen' },
         h('span', { class: 'ch-num' }, icon('alert')),
         h('span', { class: 'ch-text' },
           h('strong', null, LA.sync.expiryText(exp)),
           h('span', { class: 'ch-sub' }, exp.daysLeft < 0
-            ? 'Der Abgleich klappt nicht mehr. Leg auf GitHub einen neuen Token an und trag ihn im Profil ein.'
-            : 'Leg auf GitHub einen neuen Token an und trag ihn im Profil ein – auf jedem Gerät.')),
-        h('span', { class: 'ch-state' }, 'Profil', icon('arrowRight')))
+            ? 'Der Abgleich klappt nicht mehr. Leg auf GitHub einen neuen Token an und trag ihn in den Einstellungen ein.'
+            : 'Leg auf GitHub einen neuen Token an und trag ihn in den Einstellungen ein – auf jedem Gerät.')),
+        h('span', { class: 'ch-state' }, 'Einstellungen', icon('arrowRight')))
       : null;
     return h('section', { class: 'challenges' },
       h('div', { class: 'section-head' }, h('h2', null, 'Heute')),
@@ -347,7 +347,7 @@
   const topicsByProgress = (list) => LA.byProgress(list, (t) => LA.topicProgress(t.id));
 
   /* Tabs der Lernreisen: begonnen, fertig (100 %), noch nicht begonnen, archiviert.
-   * Die Wahl gilt für diese Sitzung – zurück auf der Startseite bleibt der Tab offen. */
+   * Die Wahl gilt für diese Sitzung – zurück auf der Seite „Reisen“ bleibt der Tab offen. */
   const SERIES_TABS = [['progress', 'In Arbeit'], ['done', 'Abgeschlossen'], ['open', 'Offen'], ['archived', 'Archiv']];
   const SERIES_EMPTY = {
     progress: 'Gerade läuft keine Lernreise – starte eine unter „Offen“.',
@@ -357,7 +357,20 @@
   };
   let seriesTab = null;
 
-  /** Startseite: braucht nur Katalog und topics/meta.js – kein Thema wird dafür geladen */
+  /** Die Lernreise, an der du gerade arbeitest: die der zuletzt gelernten Station, sonst die weiteste begonnene.
+   *  Archivierte und fertige zählen nicht. null, wenn keine läuft. */
+  function activeJourney() {
+    const running = (sr) => {
+      const p = seriesProgress(sr);
+      return !isArchived(sr) && p.done > 0 && p.pct < 1;
+    };
+    const cur = LA.seriesOf(LA.store.get().lastTopic);
+    if (cur && running(cur.series)) return cur.series;
+    return LA.byProgress(LA.series, seriesProgress).find(running) || null;
+  }
+
+  /** Startseite (Reiter „Heute“): XP von heute, die Heute-Liste und nur die aktive Lernreise.
+   *  Braucht nur Katalog und topics/meta.js – kein Thema wird dafür geladen. */
   LA.views.home = async () => {
     const st = LA.store.get();
     const activeSeries = () => LA.byProgress(LA.series.filter((x) => !isArchived(x)), seriesProgress);
@@ -397,7 +410,27 @@
       chEl = el;
     };
 
-    // Lernreisen in vier Tabs: beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
+    // Nur die aktive Lernreise – alle übrigen stehen unter „Reisen“
+    const sr = activeJourney();
+    const journey = h('section', { class: 'series-list' },
+      h('div', { class: 'section-head' },
+        h('h2', null, 'Deine Lernreise'),
+        h('a', { class: 'btn btn-soft', href: '#/reisen' }, icon('route'), 'Alle Lernreisen')),
+      sr
+        ? seriesCard(sr, () => LA.router.refresh({ keepScroll: true }), renderChallenges)
+        : h('p', { class: 'muted series-empty' }, 'Gerade läuft keine Lernreise – such dir unter „Reisen“ eine aus.'));
+
+    return {
+      el: h('div', { class: 'page home' },
+        hero(),
+        jokerOffer(),
+        chEl,
+        journey),
+    };
+  };
+
+  /** Reiter „Reisen“: alle Lernreisen in vier Tabs, darunter die Themen ohne Reise und die Suche über alle Themen */
+  LA.views.journeys = () => {
     const seriesWrap = h('div');
     const groups = () => {
       const g = { progress: [], done: [], open: [], archived: [] };
@@ -407,6 +440,7 @@
       });
       return g;
     };
+    // Beim (Ent-)Archivieren nur diesen Teil neu aufbauen, die Scrollposition bleibt
     const renderSeries = () => {
       if (!LA.series.length) return;
       const g = groups();
@@ -420,49 +454,35 @@
         }));
       const list = g[seriesTab];
       seriesWrap.replaceChildren(h('section', { class: 'series-list' + (seriesTab === 'archived' ? ' is-archive' : '') },
-        h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen'), h('a', { class: 'btn btn-soft', href: '#/karten' }, icon('cards'), 'Alle Karteikarten')),
         tabs,
-        list.length ? list.map((sr) => seriesCard(sr, () => (renderSeries(), renderChallenges()), renderChallenges)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
+        list.length ? list.map((sr) => seriesCard(sr, renderSeries, () => {})) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
     };
     renderSeries();
 
-    // Hier nur Themen ohne Lernreise – die übrigen stehen schon als Stationen oben
-    const loose = topicsByProgress(LA.catalog.filter((t) => !LA.seriesOf(t.id)));
-
-    return {
-      el: h('div', { class: 'page home' },
-        hero(),
-        jokerOffer(),
-        chEl,
-        seriesWrap,
-        h('section', null,
-          h('div', { class: 'section-head' },
-            h('h2', null, LA.series.length ? 'Weitere Themen' : 'Deine Themen'),
-            h('a', { class: 'btn btn-soft', href: '#/themen' }, icon('search'), `Alle ${LA.catalog.length} Themen`)),
-          h('div', { class: 'topic-grid' }, loose.map(topicCard), newTopicCard()))),
-    };
-  };
-
-  /** Alle Themen mit Suche (Titel, Untertitel, Tags und Lernreise) */
-  LA.views.allTopics = () => {
+    // Themen: ohne Suche die ohne Lernreise (die übrigen sind Stationen oben), mit Suche alle passenden
+    const loose = LA.catalog.filter((t) => !LA.seriesOf(t.id));
     const grid = h('div', { class: 'topic-grid' });
-    const empty = h('p', { class: 'muted', hidden: true }, 'Kein Thema gefunden – sag Claude, was du lernen möchtest.');
+    const title = h('h2');
+    const empty = h('p', { class: 'muted', hidden: true }, 'Kein Thema gefunden – wünsch dir eins, Claude setzt es auf deine Themenliste.');
     const text = (t) => [t.title, t.subtitle, ...(t.tags || []), (LA.seriesOf(t.id) || { series: {} }).series.title].join(' ').toLowerCase();
     const render = (q = '') => {
-      const list = topicsByProgress(LA.catalog.filter((t) => text(t).includes(q.toLowerCase())));
+      const term = q.trim().toLowerCase();
+      const list = topicsByProgress(term ? LA.catalog.filter((t) => text(t).includes(term)) : loose);
+      title.textContent = term ? `Suche: ${LA.plural(list.length, 'Thema', 'Themen')}` : LA.series.length ? 'Themen ohne Lernreise' : 'Deine Themen';
       grid.replaceChildren(...list.map(topicCard), newTopicCard());
       empty.hidden = list.length > 0;
     };
-    const input = h('input', { type: 'search', placeholder: 'Thema suchen …', oninput: (e) => render(e.target.value) });
+    const input = h('input', { type: 'search', placeholder: `In allen ${LA.catalog.length} Themen suchen …`, 'aria-label': 'Themen durchsuchen', oninput: (e) => render(e.target.value) });
     render();
+
     return {
-      el: h('div', { class: 'page' },
-        h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
-        h('div', { class: 'section-head' },
-          h('h1', null, 'Alle Themen'),
-          h('label', { class: 'search' }, icon('search'), input)),
-        empty,
-        grid),
+      el: h('div', { class: 'page journeys' },
+        h('h1', null, 'Lernreisen'),
+        seriesWrap,
+        h('section', null,
+          h('div', { class: 'section-head' }, title, h('label', { class: 'search' }, icon('search'), input)),
+          empty,
+          grid)),
     };
   };
 
@@ -555,22 +575,6 @@
     const lvl = LA.store.levelInfo();
 
     const si = LA.store.streakInfo();
-    const jokerSet = new Set(si.jokerDays);
-
-    // XP der letzten 14 Tage, Joker-Tage mit Schild
-    const days = Array.from({ length: 14 }, (_, i) => LA.addDays(LA.today(), i - 13));
-    const maxXP = Math.max(st.goal, ...days.map((d) => st.days[d] || 0));
-    const chart = h('div', { class: 'xp-chart' },
-      h('div', { class: 'xp-goal-line', style: { bottom: `calc(22px + (100% - 22px) * ${st.goal / maxXP})` } }, h('span', null, 'Ziel')),
-      days.map((d) => {
-        const v = st.days[d] || 0;
-        const [, , dd] = d.split('-');
-        const joker = jokerSet.has(d);
-        return h('div', { class: 'xp-col' + (d === LA.today() ? ' today' : ''), title: joker ? `${d}: Joker eingesetzt` : `${d}: ${v} XP` },
-          joker ? h('div', { class: 'xp-joker' }, icon('shield'))
-            : h('div', { class: 'xp-bar' + (v >= st.goal ? ' hit' : ''), style: { height: (v / maxXP) * 100 + '%' } }),
-          h('div', { class: 'xp-day' }, dd));
-      }));
 
     // Joker dieses Monats: bereite zuerst, dann die eingesetzten mit Datum
     const month = LA.today().slice(0, 7);
@@ -612,6 +616,33 @@
         h('div', { class: 'badge-desc' }, b.desc));
     }));
 
+    return {
+      el: h('div', { class: 'page profile' },
+        ichTabs('profil'),
+        h('section', { class: 'profile-hero' },
+          h('h1', { class: 'sr-only' }, `Fortschritt – Level ${lvl.level}`),
+          h('div', { class: 'hh-figure', 'aria-hidden': 'true' },
+            h('span', { class: 'hh-giant' }, String(lvl.level)),
+            h('span', { class: 'hh-legend' },
+              h('span', { class: 'hh-unit' }, 'Level'),
+              h('span', null, `${st.xp} XP gesamt`),
+              h('span', null, `noch ${lvl.need - lvl.into} XP bis Level ${lvl.level + 1}`))),
+          h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': `Level ${lvl.level}, Fortschritt zum nächsten Level`, 'aria-valuenow': String(lvl.into), 'aria-valuemax': String(lvl.need) },
+            h('div', { style: { width: lvl.pct * 100 + '%' } })),
+          h('dl', { class: 'profile-stats' },
+            [[LA.store.streak(), 'Tage Serie'], [Object.values(st.days).filter(Boolean).length, 'Lerntage'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt']]
+              .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n)))))),
+        jokers,
+        LA.ui.statsSections(),
+        memorySection(),
+        yearHeatmap(st, si),
+        h('section', null, h('h2', null, 'Abzeichen'), badges)),
+    };
+  };
+
+  /** Reiter „Ich“: Einstellungen – Lernen, Darstellung, Notizen, Geräte-Sync, Daten */
+  LA.views.settings = () => {
+    const st = LA.store.get();
     const fileInput = h('input', { type: 'file', accept: 'application/json', hidden: true });
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
@@ -646,40 +677,26 @@
     }
 
     return {
-      el: h('div', { class: 'page profile' },
-        h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
-        h('section', { class: 'profile-hero' },
-          h('h1', { class: 'sr-only' }, `Level ${lvl.level}`),
-          h('div', { class: 'hh-figure', 'aria-hidden': 'true' },
-            h('span', { class: 'hh-giant' }, String(lvl.level)),
-            h('span', { class: 'hh-legend' },
-              h('span', { class: 'hh-unit' }, 'Level'),
-              h('span', null, `${st.xp} XP gesamt`),
-              h('span', null, `noch ${lvl.need - lvl.into} XP bis Level ${lvl.level + 1}`))),
-          h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': `Level ${lvl.level}, Fortschritt zum nächsten Level`, 'aria-valuenow': String(lvl.into), 'aria-valuemax': String(lvl.need) },
-            h('div', { style: { width: lvl.pct * 100 + '%' } })),
-          h('dl', { class: 'profile-stats' },
-            [[LA.store.streak(), 'Tage Serie'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt'], [st.stats.games, 'Spiele']]
-              .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n))))),
-          h('a', { class: 'btn btn-soft profile-stats-link', href: '#/statistik' }, icon('chart'), 'Statistik: Karten und Lektionen pro Tag')),
-        jokers,
-        yearHeatmap(st, si),
-        memorySection(),
-        h('section', { class: 'card' }, h('h2', null, 'Die letzten 14 Tage'), chart),
-        h('section', null, h('h2', null, 'Abzeichen'), badges),
+      el: h('div', { class: 'page profile settings-page' },
+        ichTabs('einstellungen'),
+        h('h1', { class: 'sr-only' }, 'Einstellungen'),
         h('section', { class: 'card settings' },
-          h('h2', null, 'Einstellungen'),
+          h('h2', null, 'Lernen'),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Tagesziel'), h('div', { class: 'muted' }, 'Wie viele XP möchtest du pro Tag sammeln?')),
             LA.ui.segmented([[20, 'Locker · 20'], [50, 'Normal · 50'], [100, 'Ehrgeizig · 100'], [200, 'Intensiv · 200']], st.goal, (v) => LA.store.setGoal(v))),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Karteikarten pro Runde'), h('div', { class: 'muted' }, 'Wie viele Karten eine Lernrunde höchstens hat – fällige zuerst, der Rest wird mit neuen aufgefüllt.')),
             LA.ui.roundSizePicker((v) => LA.store.setting('roundSize', v))),
-          h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Darstellung')),
-            LA.ui.segmented([['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']], st.settings.theme, (v) => LA.app.setTheme(v))),
-          h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Töne'), h('div', { class: 'muted' }, 'Kurze Klänge bei richtigen und falschen Antworten.')),
-            LA.ui.segmented([[true, 'An'], [false, 'Aus']], st.settings.sound, (v) => LA.store.setting('sound', v))),
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Notizen'), h('div', { class: 'muted' },
             `${LA.plural(LA.store.openNotes(), 'offene Notiz', 'offene Notizen')} – Kartenwünsche und Fragen, die Claude am Rechner abarbeitet.`)),
-            h('a', { class: 'btn btn-soft', href: '#/notizen' }, icon('note'), 'Ansehen')),
+            h('a', { class: 'btn btn-soft', href: '#/notizen' }, icon('note'), 'Ansehen'))),
+        h('section', { class: 'card settings' },
+          h('h2', null, 'Darstellung'),
+          h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Hell oder dunkel')),
+            LA.ui.segmented([['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']], st.settings.theme, (v) => LA.app.setTheme(v))),
+          h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Töne'), h('div', { class: 'muted' }, 'Kurze Klänge bei richtigen und falschen Antworten.')),
+            LA.ui.segmented([[true, 'An'], [false, 'Aus']], st.settings.sound, (v) => LA.store.setting('sound', v)))),
+        h('section', { class: 'card settings' },
+          h('h2', null, 'Geräte & Daten'),
           syncRow.el,
           h('div', { class: 'setting' }, h('div', null, h('strong', null, 'Daten'), h('div', { class: 'muted' }, synced
             ? 'Sichere deinen Fortschritt bei Bedarf als Datei. Importieren und Zurücksetzen gelten für alle verbundenen Geräte.'
@@ -692,4 +709,11 @@
       destroy: syncRow.destroy,
     };
   };
+
+  /** Umschalter oben im Reiter „Ich“: Fortschritt | Einstellungen (Links, damit Zurück im Browser klappt) */
+  function ichTabs(active) {
+    return h('nav', { class: 'segmented ich-tabs', 'aria-label': 'Ich' },
+      [['profil', 'Fortschritt'], ['einstellungen', 'Einstellungen']].map(([key, label]) =>
+        h('a', { href: `#/${key}`, class: key === active ? 'on' : null, 'aria-current': key === active ? 'page' : null }, label)));
+  }
 })();
