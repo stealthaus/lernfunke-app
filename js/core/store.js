@@ -10,9 +10,10 @@
  *  · Bestwerte (Sterne, Rekorde, Blitzrunde) – Maximum bzw. Minimum; Abzeichen – frühestes Datum.
  *  · Epoche { id, t }: Zurücksetzen und Importieren beginnen eine neue; die neuere ersetzt alles.
  *  · Notizen { [id]: { v, t } } – wie Einzelwerte; tools/notes.js liest und erledigt sie am Rechner.
- *  · Tagesaktivität act { 'YYYY-MM-DD': { reviews|lessons|perfect|games|dq|blitz: { [gerät]: n } } } – für
- *    Wochen-Quests und Tagesfrage. Zähler wie oben; blitz (Tagesbestwert) und dq (Tagesfrage: 1 falsch,
- *    2 richtig) zählen als Maximum statt Summe. Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
+ *  · Tagesaktivität act { 'YYYY-MM-DD': { reviews|lessons|perfect|games|dq|blitz|…: { [gerät]: n } } } – für
+ *    Wochen-Quests, Tagesfrage und Statistik (js/core/stats.js). Zähler wie oben; blitz (Tagesbestwert),
+ *    dq (Tagesfrage: 1 falsch, 2 richtig) und due (fällige Karten des Tages) zählen als Maximum statt Summe.
+ *    Karten: rnew (neu gelernt), rdue (fällige wiederholt), rok (gewusst); Lektionen: lnew (zum ersten Mal). Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
  *  · Joker { 'YYYY-MM-DD': 'YYYY-MM-DD' } – gehaltener Tag → Einsatzdatum, frühestes Datum gewinnt.
  *  · Tagesfrage zum Wiederholen dqRetry { [Fragen-ID]: { v: { topic, day } | null, t } } – wie Einzelwerte.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
@@ -25,9 +26,9 @@
   const KEY_STALE = 'lernfunke.stale';
   const DEFAULT_SETTINGS = { theme: 'auto', sound: true, roundSize: 20 };
   const KEEP_DAYS = 400;
-  const KEEP_ACT_DAYS = 60; // Tagesaktivität braucht nur die laufende Woche (+ Puffer)
+  const KEEP_ACT_DAYS = 400; // Tagesaktivität: Quests brauchen die laufende Woche, die Statistik ein Jahr
   const KEEP_QUEST_WEEKS = 12;
-  const ACT_MAX = ['blitz', 'dq']; // Tagesaktivität: Maximum statt Summe
+  const ACT_MAX = ['blitz', 'dq', 'due']; // Tagesaktivität: Maximum statt Summe
 
   const readLS = (key) => {
     try {
@@ -458,6 +459,7 @@
     inc(l.runs);
     inc(doc.stats.lessons);
     bump('lessons');
+    if (!prev) bump('lnew');
     if (stars === 3) (inc(doc.stats.perfect), bump('perfect'));
     save();
     checkBadges();
@@ -569,6 +571,10 @@
 
   function reviewCard(topicId, cardId, known) {
     const prev = cardState(topicId, cardId);
+    noteDue(); // vor der Änderung: die Karte zählt heute noch als fällig
+    if (!prev) bump('rnew');
+    else if (prev.due <= LA.today()) bump('rdue');
+    if (known) bump('rok');
     // Neue Karten gelten als Fach 1 – gewusst heißt also mindestens Fach 2
     const box = known ? Math.min(5, (prev ? prev.box : 1) + 1) : 1;
     dt(topicId).cards[cardId] = reg({ box, due: LA.addDays(LA.today(), INTERVALS[box]), n: (prev ? prev.n : 0) + 1 });
@@ -591,6 +597,22 @@
       if (cs.due <= LA.today()) n++;
     }));
     return n;
+  }
+
+  /** Fällige Karten heute für die Statistik: was jetzt fällig ist plus die heute schon wiederholten
+   *  fälligen (die sind nicht mehr fällig) – ergibt den Stapel vom Tagesbeginn. Als Tagesmaximum
+   *  gespeichert, damit Wiederholen die Zahl nicht wieder senkt. Speichert nicht; true = geändert. */
+  function noteDue() {
+    const t = LA.today();
+    const n = dueCount(Object.keys(state.topics)) + (activity(t).rdue || 0);
+    const cur = ((doc.act[t] || {}).due || {})[device];
+    if (cur != null && cur >= n) return false;
+    bump('due', n);
+    return true;
+  }
+  /** Beim Start der App und auf der Statistik-Seite: fällige Karten von heute festhalten */
+  function recordDue() {
+    if (noteDue()) save();
   }
 
   /** Fächer von Karten entfernen, die es nicht mehr gibt (Vorderseite geändert oder gelöscht) */
@@ -830,7 +852,7 @@
     get: () => state,
     on: (fn) => (listeners.add(fn), () => listeners.delete(fn)),
     levelInfo, streak, streakInfo, useJoker, xpBoost, addXP, favTestDone, todayXP, topic, visit, lessonResult, best, testResult,
-    isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
+    isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, recordDue, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer, dailyRetry,
     BADGES, badgeCount, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,

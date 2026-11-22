@@ -2748,3 +2748,160 @@ a.note-where:hover span {
   margin: 0 auto;
   padding-top: max(24px, env(safe-area-inset-top));
 }
+
+/* Statistik: Säulen mit schwarzer Kontur, Pastell als Fläche (Mint = wiederholt, Himmel = neu),
+ * schwarzer Strich = fällig. Zahlen stehen zusätzlich im title, in der Legende und in den Kennzahlen. */
+.profile-stats-link {
+  margin-top: 16px;
+}
+.st-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+.st-card > p {
+  margin: 4px 0 12px;
+  max-width: var(--measure);
+}
+.st-card > p.st-verdict {
+  font-weight: 700;
+  border-left: 4px solid var(--rule);
+  padding-left: 10px;
+}
+.st-chart {
+  margin: 28px 0 8px;
+}
+.st-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap);
+  height: 180px;
+  padding-left: 28px;
+  border-bottom: 1px solid var(--rule);
+}
+.st-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border);
+}
+.st-grid > span {
+  position: absolute;
+  left: 0;
+  top: -0.55rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--surface);
+  padding-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.st-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}
+.st-stack {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 34px;
+  min-height: 3px;
+  display: flex;
+  flex-direction: column-reverse;
+}
+.st-seg {
+  flex: 1 1 0;
+  min-height: 2px;
+  border: 1px solid var(--rule);
+}
+.st-seg + .st-seg {
+  border-bottom: 0;
+}
+.st-col.today .st-stack {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+.st-tick {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: calc(100% + 2px);
+  max-width: 40px;
+  height: 3px;
+  background: var(--text);
+}
+.st-val {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.st-axis {
+  display: flex;
+  gap: var(--gap);
+  padding-left: 28px;
+  margin-top: 4px;
+}
+.st-axis > span {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  font-variant-numeric: tabular-nums;
+}
+.st-axis > span.today {
+  color: var(--text);
+  font-weight: 700;
+}
+.seg-repeat { background: var(--p2); }
+.seg-new { background: var(--p1); }
+.seg-old { background: var(--surface-3); }
+.seg-due { background: var(--p3); }
+.seg-over { background: color-mix(in srgb, var(--text) 72%, var(--bg)); }
+.st-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--rule);
+}
+.st-swatch.st-swatch-tick {
+  height: 3px;
+  width: 14px;
+  border: 0;
+  background: var(--text);
+}
+.st-facts {
+  margin-top: 16px;
+}
+.st-facts dd {
+  font-variant-numeric: tabular-nums;
+}
+.st-note {
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+@media (max-width: 560px) {
+  .st-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .st-plot,
+  .st-axis {
+    padding-left: 22px;
+  }
+}

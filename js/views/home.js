@@ -1,4 +1,4 @@
-/* Startseite (Themenübersicht) und Profil (Statistik, Abzeichen, Einstellungen). */
+/* Startseite (Themenübersicht) und Profil (Serie, Abzeichen, Einstellungen – Statistik in stats.js). */
 (function () {
   'use strict';
   const LA = window.LA;
@@ -640,7 +640,8 @@
             h('div', { style: { width: lvl.pct * 100 + '%' } })),
           h('dl', { class: 'profile-stats' },
             [[LA.store.streak(), 'Tage Serie'], [st.stats.lessons, 'Lektionen'], [st.stats.reviews, 'Karten wiederholt'], [st.stats.games, 'Spiele']]
-              .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n)))))),
+              .map(([n, label]) => h('div', null, h('dt', null, label), h('dd', null, String(n))))),
+          h('a', { class: 'btn btn-soft profile-stats-link', href: '#/statistik' }, icon('chart'), 'Statistik: Karten und Lektionen pro Tag')),
         jokers,
         yearHeatmap(st, si),
         memorySection(),

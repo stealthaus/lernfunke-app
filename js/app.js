@@ -7,6 +7,7 @@
   const ROUTES = [
     [/^\/?$/, 'home', []],
     [/^\/profil$/, 'profile', []],
+    [/^\/statistik$/, 'stats', []],
     [/^\/themen$/, 'allTopics', []],
     [/^\/t\/([^/]+)$/, 'topic', ['id']],
     [/^\/t\/([^/]+)\/l\/([^/]+)$/, 'lesson', ['id', 'lessonId']],
@@ -219,6 +220,7 @@
       window.addEventListener('hashchange', () => render());
       render();
       LA.challenges.check();
+      LA.store.recordDue(); // fällige Karten von heute für die Statistik
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
