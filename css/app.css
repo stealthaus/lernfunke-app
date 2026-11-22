@@ -155,12 +155,6 @@
     padding: 5px 8px;
     font-size: 0.82rem;
   }
-  .tstat-bolt {
-    display: none;
-  }
-  .top-actions .icon-btn:nth-child(-n + 2) {
-    display: none;
-  }
 }
 
 body.focus-mode .topbar {
@@ -237,6 +231,9 @@ body.focus-mode .topbar {
   }
   .hh-legend > span:nth-child(2) {
     border-top: 0;
+  }
+  .hh-legend > span:nth-child(3) {
+    grid-column: 1 / -1;
   }
 }
 

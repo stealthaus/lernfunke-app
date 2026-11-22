@@ -209,7 +209,7 @@
     const n = range;
     const sum = LA.stats.summary(n);
     const s = LA.stats.starts();
-    const today = LA.cardsToday(LA.catalog.map((t) => t.id));
+    const today = LA.cardsToday(LA.cardTopics());
 
     const picker = LA.ui.segmented(RANGES.map((r) => [r, `${r} Tage`]), n, (v) => {
       range = v;
@@ -235,7 +235,7 @@
           h('p', { class: 'sr-only' }, `Im Schnitt ${fmt(sum.avgReviews)} Karteikarten pro Tag in den letzten ${n} Tagen. ${heroTrend(sum.trend.reviews, n)}.`),
           h('div', { class: 'st-head' },
             today.open
-              ? h('a', { class: 'btn btn-primary', href: '#/karten' }, icon('cards'), today.due ? `${LA.plural(today.due, 'Karte', 'Karten')} fällig – lernen` : `${today.fresh} neue Karten lernen`)
+              ? h('a', { class: 'btn btn-primary', href: '#/karten' }, icon('cards'), `Karten lernen: ${LA.cardsText(today)}`)
               : h('a', { class: 'btn btn-soft', href: '#/karten' }, icon('cards'), 'Alle Karteikarten'),
             picker)),
         cardsSection(sum, s, n),

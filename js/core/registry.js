@@ -250,6 +250,26 @@
     return sr.topics.filter((id) => LA.catalogEntry(id) && !off.includes(id));
   };
 
+  /** Archivierte Lernreisen sind pausiert: ihre Karten zählen nirgends mit, die Tagesfrage kommt nicht aus ihnen.
+   *  Lernen lässt sich ihr Stapel trotzdem, wenn man ihn ausdrücklich öffnet. */
+  LA.isArchived = (sr) => (LA.store.setting('seriesArchived') || []).includes(sr.id);
+
+  /** Themen, deren Karten zählen – die eine Grundlage für alle Kartenzahlen (Startseite, Kopf von „Alle
+   *  Karteikarten“, Statistik, Gedächtnis-Wert): Stationen aktiver Lernreisen (ohne abgewählte, wie ihr
+   *  Stapel) und Themen ohne Reise. Eine Station, die auch in einer aktiven Reise liegt, zählt. */
+  LA.cardTopics = () => {
+    const ids = new Set();
+    LA.series.forEach((sr) => !LA.isArchived(sr) && LA.seriesCardTopics(sr).forEach((id) => ids.add(id)));
+    LA.catalog.forEach((t) => !LA.series.some((sr) => sr.topics.includes(t.id)) && ids.add(t.id));
+    return LA.catalog.map((t) => t.id).filter((id) => ids.has(id));
+  };
+
+  /** Thema liegt nur in archivierten Lernreisen – seine Karten sind pausiert */
+  LA.topicPaused = (topicId) => {
+    const in_ = LA.series.filter((sr) => sr.topics.includes(topicId));
+    return in_.length > 0 && in_.every(LA.isArchived);
+  };
+
   /** Karten-IDs eines Themas wie in LA.topicCards: aus dem geladenen Thema, sonst aus topics/meta.js (k)
    *  plus eigene Karten, ohne ausgeblendete. null, wenn weder Thema noch IDs da sind. */
   const cardIdsOf = (id) => {
@@ -293,6 +313,9 @@
     const newNow = Math.min(fresh.size, max - dueNow);
     return { due, fresh: fresh.size, open: due + fresh.size, dueNow, newNow, size: dueNow + newNow };
   };
+
+  /** Eine Schreibweise für Kartenzahlen überall: „3 fällig · 12 neu“ (Teile mit 0 entfallen) */
+  LA.cardsText = (c) => [c.due ? `${c.due} fällig` : null, c.fresh ? `${c.fresh} neu` : null].filter(Boolean).join(' · ') || 'alles erledigt';
 
   /** Wie cardsToday, dazu die Fächer und die Stapelgröße – ohne die Inhalte zu laden (Seite „Alle Karteikarten“).
    *  { …cardsToday, boxes: [Fach 1–5], total, locked: neue Karten aus noch nicht geschafften Lektionen } */

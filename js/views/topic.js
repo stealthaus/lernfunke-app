@@ -25,11 +25,8 @@
     const prog = LA.topicProgress(id);
     const next = LA.nextLesson(topic);
     const cards = LA.topicCards(topic);
-    const due = cards.filter((c) => {
-      const cs = tState.cards[c.id];
-      return cs && cs.due <= LA.today();
-    }).length;
-    const fresh = cards.filter((c) => !tState.cards[c.id]).length;
+    const today = LA.cardsToday([id]);
+    const paused = LA.topicPaused(id);
     const mem = LA.challenges.memoryOf(id);
     const favN = LA.store.favCount(id);
 
@@ -103,7 +100,9 @@
               h('span', { class: 'tag' }, `~${topic.lessons.reduce((a, l) => a + lessonMinutes(l), 0)} min`)),
             topic.intro ? h('div', { class: 'md th-intro', html: LA.md(topic.intro) }) : null)),
         h('section', { class: 'action-grid' },
-          action(`#/t/${id}/karten`, 'cards', 'Karteikarten', (due ? `${due} fällig · ${fresh} neu` : `${cards.length} Karten · ${fresh} neu`) + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), LA.cardsToday([id]).open || null),
+          action(`#/t/${id}/karten`, 'cards', 'Karteikarten',
+            (paused ? `${LA.plural(cards.length, 'Karte', 'Karten')} · pausiert (Reise im Archiv)` : today.open ? LA.cardsText(today) : LA.plural(cards.length, 'Karte', 'Karten'))
+            + (mem && mem.started ? ` · Gedächtnis ${Math.round(mem.pct * 100)} %` : ''), paused ? null : today.open || null),
           action(`#/t/${id}/spiele`, 'gamepad', 'Spielhalle', 'Zuordnen, Blitzrunde'),
           action(`#/t/${id}/test`, 'target', 'Abschlusstest',
             (tState.test ? `Bestwert ${Math.round(tState.test.best * 100)} %` : 'Gemischte Fragen aus allen Lektionen') +

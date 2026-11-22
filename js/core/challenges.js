@@ -137,10 +137,11 @@
     return o;
   }
 
-  /** Lernreisen, die der Nutzer von der Tagesfrage ausgenommen hat (Einstellung dailySkip: Reise-IDs) */
+  /** Lernreisen, die der Nutzer von der Tagesfrage ausgenommen hat (Einstellung dailySkip: Reise-IDs),
+   *  und Themen, die nur in archivierten (pausierten) Lernreisen liegen */
   const dailySkipped = (topicId) => {
     const skip = LA.store.setting('dailySkip') || [];
-    return skip.length > 0 && LA.series.some((sr) => skip.includes(sr.id) && sr.topics.includes(topicId));
+    return LA.topicPaused(topicId) || (skip.length > 0 && LA.series.some((sr) => skip.includes(sr.id) && sr.topics.includes(topicId)));
   };
 
   /** Thema der heutigen Tagesfrage – oder null, wenn noch keine Lektion (vor heute) geschafft ist
@@ -234,9 +235,10 @@
     return { pct: Math.min(1, score / Math.max(total, started)), total: Math.max(total, started), started, score };
   }
 
-  /** Über alle Themen mit begonnenen Karten: { pct, topics: [{ id, pct, … }] } (schwächste zuerst) */
+  /** Über alle Themen mit begonnenen Karten, deren Karten zählen (LA.cardTopics – ohne archivierte Reisen):
+   *  { pct, topics: [{ id, pct, … }] } (schwächste zuerst) */
   function memoryAll() {
-    const topics = LA.catalog.map((t) => ({ id: t.id, ...memoryOf(t.id) })).filter((x) => x.started);
+    const topics = LA.cardTopics().map((id) => ({ id, ...memoryOf(id) })).filter((x) => x.started);
     const total = topics.reduce((a, x) => a + x.total, 0);
     const score = topics.reduce((a, x) => a + x.score, 0);
     topics.sort((a, b) => a.pct - b.pct);

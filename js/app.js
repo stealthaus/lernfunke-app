@@ -33,10 +33,6 @@
 
   /* ---------- Theme ---------- */
   const media = window.matchMedia('(prefers-color-scheme: dark)');
-  const effectiveTheme = () => {
-    const t = LA.store.setting('theme');
-    return t === 'auto' ? (media.matches ? 'dark' : 'light') : t;
-  };
   function applyTheme() {
     const t = LA.store.setting('theme');
     if (t === 'auto') document.documentElement.removeAttribute('data-theme');
@@ -55,25 +51,20 @@
   }
   const streakEl = h('span');
   const boostEl = h('span', { class: 'tstat-boost' });
-  const todayEl = h('span');
   const levelEl = h('span');
   const ringBox = h('span', { class: 'tstat-ring' });
-  const themeBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Hell/Dunkel umschalten', onclick: () => LA.app.setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark') });
-  const soundBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Töne an/aus', onclick: () => LA.store.setting('sound', !LA.store.setting('sound')) });
   const header = h('header', { class: 'topbar' },
     h('div', { class: 'topbar-inner' },
       h('a', { class: 'brand', href: '#/' }, brandMark(), h('span', { class: 'brand-name' }, 'Lernfunke')),
       h('nav', { class: 'top-stats', 'aria-label': 'Dein Stand' },
         h('a', { class: 'tstat tstat-streak', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl, boostEl),
-        h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, h('span', { class: 'tstat-emoji tstat-bolt' }, icon('bolt')), todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level – der Ring zeigt, wie weit es bis zum nächsten ist' }, ringBox, levelEl)),
-      h('div', { class: 'top-actions' }, soundBtn, themeBtn,
+      h('div', { class: 'top-actions' },
         h('a', { class: 'icon-btn', href: '#/karten', 'aria-label': 'Alle Karteikarten', title: 'Alle Karteikarten' }, icon('cards')),
         LA.notes.button(),
         h('a', { class: 'icon-btn', href: '#/profil', 'aria-label': 'Profil & Einstellungen' }, icon('user')))));
 
   function updateHeader() {
-    const st = LA.store.get();
     const si = LA.store.streakInfo();
     streakEl.textContent = si.days;
     streakEl.parentElement.classList.toggle('dim', !si.days);
@@ -84,15 +75,10 @@
     boostEl.textContent = boostTxt;
     boostEl.hidden = !boostTxt;
     streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}, heute ${si.learnedToday ? 'geschafft' : 'noch offen'}${boostTxt ? `, XP-Boost ${boostTxt}` : ''}, ${si.left} von ${si.perMonth} Jokern übrig`);
-    const today = LA.store.todayXP();
-    todayEl.textContent = `${today} XP`;
-    todayEl.parentElement.setAttribute('aria-label', `Heute ${today} von ${st.goal} XP`);
     const lvl = LA.store.levelInfo();
     ringBox.replaceChildren(LA.ui.ring(lvl.pct, 22, 4));
     levelEl.textContent = `Lv ${lvl.level}`;
     levelEl.parentElement.setAttribute('aria-label', `Level ${lvl.level}, ${lvl.into} von ${lvl.need} XP bis Level ${lvl.level + 1}`);
-    themeBtn.replaceChildren(icon(effectiveTheme() === 'dark' ? 'sun' : 'moon'));
-    soundBtn.replaceChildren(icon(st.settings.sound ? 'sound' : 'mute'));
   }
 
   /* ---------- Router ---------- */

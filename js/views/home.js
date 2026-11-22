@@ -62,10 +62,10 @@
       }, n === 1 ? 'Joker einsetzen' : `${n} Joker einsetzen`));
   }
 
-  /** Kopf der Startseite im Fahrplan-Stil: Datum, XP von heute als große Zahl, darunter die Hauptaktion */
-  function hero(continueRow) {
+  /** Kopf der Startseite im Fahrplan-Stil: Datum, XP von heute als große Zahl mit Tagesziel und Serie.
+   *  Level und Ring stehen nur in der Kopfzeile. */
+  function hero() {
     const st = LA.store.get();
-    const lvl = LA.store.levelInfo();
     const si = LA.store.streakInfo();
     const streak = si.days;
     const todayXP = LA.store.todayXP();
@@ -73,41 +73,63 @@
     const date = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
     return h('section', { class: 'home-hero' },
       h('h1', { class: 'sr-only' }, 'Lernfunke – Startseite'),
-      h('div', { class: 'hh-line' },
-        h('span', null, date),
-        h('a', { href: '#/profil' }, `Level ${lvl.level}`)),
+      h('div', { class: 'hh-line' }, h('span', null, date)),
       h('a', { class: 'hh-figure', href: '#/profil', 'aria-label': `Heute ${todayXP} von ${st.goal} XP, ${LA.plural(streak, 'Tag', 'Tage')} in Folge, ${si.left} Joker übrig. Statistik und Abzeichen öffnen` },
         h('span', { class: 'hh-giant', 'aria-hidden': 'true' }, String(todayXP)),
         h('span', { class: 'hh-legend', 'aria-hidden': 'true' },
           h('span', { class: 'hh-unit' }, 'XP heute'),
           h('span', null, reached ? '✓ Tagesziel geschafft' : `Ziel ${st.goal} · noch ${st.goal - todayXP}`),
-          h('span', null, streak ? `${LA.plural(streak, 'Tag', 'Tage')} in Folge · ${si.left} Joker` : 'Serie: heute starten'),
-          h('span', null, `${lvl.into} / ${lvl.need} XP bis Level ${lvl.level + 1}`))),
+          h('span', null, streak ? `${LA.plural(streak, 'Tag', 'Tage')} in Folge · ${si.left} Joker` : 'Serie: heute starten'))),
       h('div', { class: 'mini-bar hh-bar', role: 'progressbar', 'aria-label': 'Tagesziel', 'aria-valuenow': String(Math.min(todayXP, st.goal)), 'aria-valuemax': String(st.goal) },
-        h('div', { style: { width: Math.min(1, todayXP / st.goal) * 100 + '%' } })),
-      continueRow);
+        h('div', { style: { width: Math.min(1, todayXP / st.goal) * 100 + '%' } })));
   }
 
-  /** Tagesfrage und Wochen-Quests als Fahrplan-Liste unter dem Kopf – geschafft = Mint mit ✓ */
-  function challengesSection() {
+  /** Eine Zeile der Heute-Liste. main = die eine Hauptaktion (rote Zeile), sonst Fahrplan-Zeile;
+   *  done = Mint mit ✓. it = { href, ic, kicker, title, sub, state, done } */
+  function todayRow(it, main) {
+    if (main) {
+      return h('a', { class: 'now-row', href: it.href },
+        h('span', { class: 'nr-kicker' }, it.kicker),
+        h('span', { class: 'nr-body' }, h('span', { class: 'nr-title' }, it.title), it.sub ? h('span', { class: 'nr-sub' }, it.sub) : null),
+        h('span', { class: 'nr-go' }, icon('arrowRight')));
+    }
+    return h(it.href ? 'a' : 'div', { class: 'ch-row' + (it.done ? ' done' : ''), href: it.href || null },
+      h('span', { class: 'ch-num' }, icon(it.done ? 'check' : it.ic)),
+      h('span', { class: 'ch-text' }, h('strong', null, it.kicker), h('span', { class: 'ch-sub' }, it.sub ? `${it.title} · ${it.sub}` : it.title)),
+      h('span', { class: 'ch-state' }, it.state, it.href && !it.done ? icon('arrowRight') : null));
+  }
+
+  /** Heute: feste Reihenfolge ① Karteikarten ② Weiterlernen ③ Tagesfrage. Die erste offene Zeile ist die
+   *  Hauptaktion (rot), Erledigtes schrumpft auf eine Mint-Zeile. Darunter die Wochen-Quests – alle geschafft
+   *  nur noch als eine Zeile. lesson = { href, title, topic, started } oder null */
+  function todaySection(lesson) {
+    const cards = LA.cardsToday(LA.cardTopics());
     const dq = LA.challenges.daily();
     const wk = LA.challenges.week();
     const topic = dq.topicId && LA.catalogEntry(dq.topicId);
     // offen: Wiederholungen (zuerst) und/oder die neue Frage – je richtige Antwort 10 XP + Bonus
     const open = dq.retries + (dq.newAnswered || !topic ? 0 : 1);
-    const sub = dq.answered
-      ? `${dq.correct ? 'Richtig beantwortet' : 'Beantwortet'} – morgen gibt es die nächste.`
-      : dq.retries
-        ? `${dq.retries > 1 ? `${dq.retries} Fragen von neulich kommen` : 'Die Frage von neulich kommt'} noch einmal${dq.newAnswered || !topic ? '' : ` – danach eine neue aus „${topic.title}“`}.`
-        : topic ? `Aus „${topic.title}“ – eine Frage aus einer Lektion, die schon etwas zurückliegt.` : '';
-    const daily = topic || dq.retries
-      ? h(dq.answered ? 'div' : 'a', { class: 'ch-row ch-daily' + (dq.answered ? ' done' : ''), href: dq.answered ? null : '#/tagesfrage' },
-        h('span', { class: 'ch-num' }, icon(dq.answered ? 'check' : dq.retries ? 'refresh' : 'bulb')),
-        h('span', { class: 'ch-text' },
-          h('strong', null, dq.retries && !dq.answered ? 'Tagesfrage · Wiederholung' : 'Tagesfrage'),
-          h('span', { class: 'ch-sub' }, sub)),
-        h('span', { class: 'ch-state' }, dq.answered ? 'Erledigt' : `+${open * (10 + dq.bonus)} XP`, dq.answered ? null : icon('arrowRight')))
-      : null;
+
+    const items = [];
+    // Karteikarten: fällige zuerst – sind sie geschafft, ist der Punkt erledigt (neue Karten bleiben ein Angebot)
+    items.push(cards.due
+      ? { href: '#/karten', ic: 'cards', kicker: 'Karteikarten', title: LA.cardsText(cards), state: 'Wiederholen' }
+      : { href: '#/karten', ic: 'cards', kicker: 'Karteikarten', title: cards.fresh ? `Alles Fällige geschafft · ${cards.fresh} neu` : 'Alles erledigt für heute', state: cards.fresh ? 'Neue lernen' : 'Erledigt', done: true });
+    if (lesson) {
+      items.push(lesson.title
+        ? { href: lesson.href, ic: 'play', kicker: lesson.started ? 'Weiterlernen' : 'Hier starten', title: lesson.title, sub: lesson.topic, state: 'Lektion' }
+        : { href: lesson.href, ic: 'play', kicker: 'Weiterlernen', title: 'Alle Lektionen geschafft', sub: lesson.topic, state: 'Ansehen', done: true });
+    }
+    if (topic || dq.retries) {
+      const sub = dq.answered
+        ? `${dq.correct ? 'Richtig beantwortet' : 'Beantwortet'} – morgen gibt es die nächste.`
+        : dq.retries
+          ? `${dq.retries > 1 ? `${dq.retries} Fragen von neulich kommen` : 'Die Frage von neulich kommt'} noch einmal${dq.newAnswered || !topic ? '' : ` – danach eine neue aus „${topic.title}“`}.`
+          : `Aus „${topic.title}“ – eine Frage aus einer Lektion, die schon etwas zurückliegt.`;
+      items.push({ href: dq.answered ? null : '#/tagesfrage', ic: dq.retries && !dq.answered ? 'refresh' : 'bulb', kicker: dq.retries && !dq.answered ? 'Tagesfrage · Wiederholung' : 'Tagesfrage', title: sub, state: dq.answered ? 'Erledigt' : `+${open * (10 + dq.bonus)} XP`, done: dq.answered });
+    }
+    const mainIdx = items.findIndex((it) => !it.done);
+
     const quests = wk.list.map((q, i) => {
       const done = q.done || q.reached;
       return h('li', { class: 'ch-row' + (done ? ' done' : '') },
@@ -134,13 +156,18 @@
         h('span', { class: 'ch-state' }, 'Profil', icon('arrowRight')))
       : null;
     return h('section', { class: 'challenges' },
-      h('div', { class: 'section-head' }, h('h2', null, 'Heute & diese Woche')),
+      h('div', { class: 'section-head' }, h('h2', null, 'Heute')),
       tokenRow,
-      daily,
-      h('div', { class: 'ch-kicker' },
-        h('strong', null, 'Wochen-Quests'),
-        h('span', null, allDone ? `alle geschafft · +${wk.bonusXP} XP Bonus` : `noch ${LA.plural(wk.daysLeft, 'Tag', 'Tage')} · alle drei: +${wk.bonusXP} XP Bonus`)),
-      h('ol', { class: 'ch-list' }, quests));
+      h('ol', { class: 'ch-list ch-today' }, items.map((it, i) => h('li', null, todayRow(it, i === mainIdx)))),
+      allDone
+        ? h('div', { class: 'ch-row done ch-week-done' },
+          h('span', { class: 'ch-num' }, icon('check')),
+          h('span', { class: 'ch-text' }, h('strong', null, 'Wochen-Quests'), h('span', { class: 'ch-sub' }, `alle drei geschafft · +${wk.bonusXP} XP Bonus`)),
+          h('span', { class: 'ch-state' }, 'Geschafft'))
+        : [h('div', { class: 'ch-kicker' },
+          h('strong', null, 'Wochen-Quests'),
+          h('span', null, `noch ${LA.plural(wk.daysLeft, 'Tag', 'Tage')} · alle drei: +${wk.bonusXP} XP Bonus`)),
+        h('ol', { class: 'ch-list' }, quests)]);
   }
 
   function topicCard(t) {
@@ -162,7 +189,7 @@
 
   /* Lernreisen auf- und zuklappen bzw. archivieren – beides bleibt in den Einstellungen gespeichert */
   const archivedSeries = () => LA.store.setting('seriesArchived') || [];
-  const isArchived = (sr) => archivedSeries().includes(sr.id);
+  const isArchived = LA.isArchived;
   function setArchived(sr, on) {
     LA.store.setting('seriesArchived', on ? [...archivedSeries(), sr.id] : archivedSeries().filter((x) => x !== sr.id));
   }
@@ -209,11 +236,10 @@
     const pct = total ? done / total : 0;
     const favN = stations.reduce((a, t) => a + LA.store.favCount(t.id), 0);
     const labN = stations.reduce((a, t) => a + LA.store.labCount(t.id), 0);
-    const today = LA.cardsToday(LA.seriesCardTopics(sr));
-    const cardsLabel = today.open
-      ? `Karteikarten: ${today.open} offen (${today.due} fällig, ${today.fresh} neu)`
-      : 'Karteikarten: alles erledigt für heute';
     const archived = isArchived(sr);
+    // Archiviert = pausiert: keine Kartenzahl (LA.cardTopics zählt die Reise nirgends mit)
+    const today = archived ? { open: 0 } : LA.cardsToday(LA.seriesCardTopics(sr));
+    const cardsLabel = archived ? 'Karteikarten: pausiert, solange die Reise im Archiv liegt' : `Karteikarten: ${LA.cardsText(today)}`;
     const next = stations[nextIdx];
 
     const toggle = h('button', { class: 'icon-btn sc-toggle', type: 'button', 'aria-label': 'Stationen ein- und ausblenden' }, icon('down'));
@@ -235,7 +261,7 @@
       next
         ? h('a', { class: 'sc-next', href: `#/t/${next.id}` }, `${progs[nextIdx].done ? 'Weiter' : 'Nächste Station'}: `, h('strong', null, `${nextIdx + 1}. ${next.title}`), icon('arrowRight'))
         : h('span', { class: 'sc-next' }, icon('check'), 'Alle Stationen geschafft'),
-      h('a', { class: 'sc-cards' + (today.open ? ' has-due' : ''), href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'),
+      archived ? null : h('a', { class: 'sc-cards' + (today.open ? ' has-due' : ''), href: `#/r/${sr.id}/karten`, 'aria-label': cardsLabel }, icon('cards'),
         h('span', { class: 'sc-cards-n', 'aria-hidden': 'true' }, today.open ? String(today.open) : icon('check'))),
       labN ? h('a', { class: 'sc-count sc-lab', href: `#/r/${sr.id}/labs`, title: 'Gemerkte Labs für den Rechner' }, icon('laptop'), `${labN} Lab${labN === 1 ? '' : 's'}`) : null);
 
@@ -255,7 +281,7 @@
     archiveBtn.addEventListener('click', () => {
       setArchived(sr, !archived);
       if (!archived) setOpen(sr, false);
-      LA.fx.toast(archived ? 'Lernreise zurückgeholt' : 'Lernreise archiviert', archived ? sr.title : 'Fortschritt und Karteikarten bleiben erhalten – du findest sie im Tab „Archiv“.');
+      LA.fx.toast(archived ? 'Lernreise zurückgeholt' : 'Lernreise archiviert', archived ? `${sr.title} – ihre Karten zählen wieder mit.` : 'Pausiert: Ihre Karten zählen nicht mehr mit, die Tagesfrage kommt nicht mehr daraus. Fortschritt und Fächer bleiben – im Tab „Archiv“.');
       onArchive();
     });
 
@@ -327,7 +353,7 @@
     progress: 'Gerade läuft keine Lernreise – starte eine unter „Offen“.',
     done: 'Noch keine Lernreise ganz geschafft.',
     open: 'Alle Lernreisen sind begonnen.',
-    archived: 'Nichts archiviert. Über „Archivieren“ in einer Reise räumst du sie hierher – Fortschritt und Karteikarten bleiben.',
+    archived: 'Nichts archiviert. Über „Archivieren“ in einer Reise räumst du sie hierher und pausierst sie – Fortschritt und Fächer bleiben, ihre Karten zählen nicht mehr mit.',
   };
   let seriesTab = null;
 
@@ -355,24 +381,18 @@
       if (nextId && nextId !== lastId && (await known(nextId)) && LA.nextLessonOf(nextId)) lastId = nextId;
     }
     const last = lastId && LA.catalogEntry(lastId);
-    let continueCard = null;
+    let lesson = null;
     if (last) {
       const next = LA.nextLessonOf(last.id);
-      const started = !!st.lastTopic;
-      continueCard = h('a', { class: 'now-row', href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}` },
-        h('span', { class: 'nr-kicker' }, started ? 'Weiterlernen' : 'Hier starten'),
-        h('span', { class: 'nr-body' },
-          h('span', { class: 'nr-title' }, next ? next.title : 'Alle Lektionen geschafft – Zeit für Wiederholung!'),
-          h('span', { class: 'nr-sub' }, last.title)),
-        h('span', { class: 'nr-go' }, icon('arrowRight')));
+      lesson = { href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}`, title: next ? next.title : null, topic: last.title, started: !!st.lastTopic };
       // Das Thema hinter „Weiterlernen“ schon im Hintergrund holen – der Tipp darauf öffnet dann sofort
       setTimeout(() => LA.loadTopic(last.id).catch(() => {}), 300);
     }
 
     // Tagesfrage und Quests: neu aufbauen, wenn eine Reise in die Tagesfrage kommt oder herausfällt
-    let chEl = challengesSection();
+    let chEl = todaySection(lesson);
     const renderChallenges = () => {
-      const el = challengesSection();
+      const el = todaySection(lesson);
       chEl.replaceWith(el);
       chEl = el;
     };
@@ -402,7 +422,7 @@
       seriesWrap.replaceChildren(h('section', { class: 'series-list' + (seriesTab === 'archived' ? ' is-archive' : '') },
         h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen'), h('a', { class: 'btn btn-soft', href: '#/karten' }, icon('cards'), 'Alle Karteikarten')),
         tabs,
-        list.length ? list.map((sr) => seriesCard(sr, renderSeries, renderChallenges)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
+        list.length ? list.map((sr) => seriesCard(sr, () => (renderSeries(), renderChallenges()), renderChallenges)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
     };
     renderSeries();
 
@@ -411,7 +431,7 @@
 
     return {
       el: h('div', { class: 'page home' },
-        hero(continueCard),
+        hero(),
         jokerOffer(),
         chEl,
         seriesWrap,

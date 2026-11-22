@@ -111,7 +111,7 @@
 
   /** Vorschau: wie viele Karten an den nächsten n Tagen fällig werden, wenn nichts wiederholt wird.
    *  Tag 0 = heute samt überfälligen. Gleiche Karte in mehreren Themen zählt einmal (wie dueCount),
-   *  ausgeblendete Karten zählen nicht. */
+   *  ausgeblendete Karten und pausierte Themen (archivierte Lernreisen, LA.cardTopics) zählen nicht. */
   function forecast(n = 14) {
     const today = LA.today();
     const end = LA.addDays(today, n - 1);
@@ -120,7 +120,9 @@
     const topics = LA.store.get().topics;
     const seen = new Set();
     let overdue = 0;
+    const counted = LA.catalog.length ? new Set(LA.cardTopics()) : null;
     Object.keys(topics).forEach((id) => {
+      if (counted && !counted.has(id)) return;
       const hidden = LA.store.cardEdits(id);
       Object.entries(topics[id].cards || {}).forEach(([cid, cs]) => {
         if (seen.has(cid) || (hidden[cid] || {}).hidden) return;

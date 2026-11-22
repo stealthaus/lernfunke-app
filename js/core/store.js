@@ -601,10 +601,12 @@
 
   /** Fällige Karten heute für die Statistik: was jetzt fällig ist plus die heute schon wiederholten
    *  fälligen (die sind nicht mehr fällig) – ergibt den Stapel vom Tagesbeginn. Als Tagesmaximum
-   *  gespeichert, damit Wiederholen die Zahl nicht wieder senkt. Speichert nicht; true = geändert. */
+   *  gespeichert, damit Wiederholen die Zahl nicht wieder senkt. Speichert nicht; true = geändert.
+   *  Gezählt werden nur Themen, deren Karten zählen (LA.cardTopics – ohne archivierte Lernreisen). */
   function noteDue() {
     const t = LA.today();
-    const n = dueCount(Object.keys(state.topics)) + (activity(t).rdue || 0);
+    const ids = LA.cardTopics && LA.catalog.length ? LA.cardTopics() : Object.keys(state.topics);
+    const n = dueCount(ids) + (activity(t).rdue || 0);
     const cur = ((doc.act[t] || {}).due || {})[device];
     if (cur != null && cur >= n) return false;
     bump('due', n);
