@@ -325,6 +325,18 @@
    * Joker-Tage halten die Serie, zählen aber nicht mit. Nichts wird rückwirkend überbrückt. */
   const JOKERS = 3;
   const monthOf = (d) => d.slice(0, 7);
+  /** Sortierte Tage → Längen der lückenlosen Folgen; gezählt werden nur Tage mit counts(d) */
+  function runLengths(list, counts) {
+    const out = [];
+    let n = 0, prev = null;
+    for (const d of list) {
+      if (prev && LA.addDays(prev, 1) !== d) (n && out.push(n), (n = 0));
+      if (counts(d)) n++;
+      prev = d;
+    }
+    if (n) out.push(n);
+    return out;
+  }
   let streakCache = null;
   function streakInfo() {
     const today = LA.today();
@@ -347,6 +359,12 @@
     }
     const yesterday = LA.addDays(today, -1);
     if (last && last < yesterday) days = 0;
+    // Serienlängen (gelernte Tage) – mit Jokern und „ohne Netz“: nur echte Lerntage am Stück
+    const runs = runLengths(kept, learned);
+    const learnedDays = kept.filter(learned);
+    const pureRuns = runLengths(learnedDays, () => true);
+    const lastLearned = learnedDays[learnedDays.length - 1];
+    const pure = lastLearned && lastLearned >= yesterday ? pureRuns[pureRuns.length - 1] : 0;
     const used = (m) => Object.keys(state.jokers).filter((d) => monthOf(d) === m).length;
     // Angebot: gestern nicht gehalten, davor lief eine Serie, die Joker reichen für die ganze Lücke
     let offer = null;
@@ -360,6 +378,8 @@
     }
     const info = {
       days, best, left: JOKERS - used(monthOf(today)), perMonth: JOKERS,
+      runs, // Länge jeder Serie (mit Joker-Tagen), älteste zuerst
+      pure, pureBest: Math.max(0, ...pureRuns), pureRuns, // dasselbe ohne Joker-Tage
       jokerDays, // alle eingesetzten Joker-Tage, älteste zuerst
       learnedToday: learned(today),
       offer, // { gap: [Tage], saves: Serienlänge danach } oder null
@@ -700,24 +720,34 @@
     save();
   }
 
-  /* ---------- Abzeichen ---------- */
+  /* ---------- Abzeichen ----------
+   * test: wann es das Abzeichen gibt. count (optional): wie oft es schon erreicht wurde – aus dem
+   * vorhandenen Zustand abgeleitet, damit beim Abgleich nichts verloren geht; im Profil als „×n“. */
+  const runsAtLeast = (list, n) => list.filter((k) => k >= n).length;
+  const topicsMastered = (s) => Object.keys(s.topics).filter((id) => {
+    const ls = LA.lessonsOf ? LA.lessonsOf(id) : null;
+    return ls && ls.length && ls.every((l) => (s.topics[id].lessons[l.id] || {}).done);
+  }).length;
   const BADGES = [
     { id: 'first', icon: 'spark', title: 'Erster Funke', desc: 'Erste Lektion abgeschlossen', test: (s) => s.stats.lessons >= 1 },
-    { id: 'perfect', icon: 'diamond', title: 'Fehlerfrei', desc: 'Eine Lektion mit 3 Sternen', test: (s) => s.stats.perfect >= 1 },
-    { id: 'goal', icon: 'target', title: 'Zielstrebig', desc: 'Tagesziel erreicht' },
-    { id: 'streak3', icon: 'flame', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3 },
-    { id: 'streak7', icon: 'medal', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7 },
+    { id: 'perfect', icon: 'diamond', title: 'Fehlerfrei', desc: 'Eine Lektion mit 3 Sternen', test: (s) => s.stats.perfect >= 1, count: (s) => s.stats.perfect },
+    { id: 'goal', icon: 'target', title: 'Zielstrebig', desc: 'Tagesziel erreicht', count: (s) => Object.values(s.days).filter((x) => x >= s.goal).length },
+    { id: 'streak3', icon: 'flame', title: 'Dranbleiber', desc: '3 Tage in Folge gelernt', test: () => streak() >= 3, count: () => runsAtLeast(streakInfo().runs, 3) },
+    { id: 'streak7', icon: 'medal', title: 'Wochenheld', desc: '7 Tage in Folge gelernt', test: () => streak() >= 7, count: () => runsAtLeast(streakInfo().runs, 7) },
     // 'joker' hieß die alte Fassung, die rückwirkend vergeben wurde – bleibt im Dokument liegen, wird nicht mehr angezeigt
-    { id: 'joker-aktiv', icon: 'lifebuoy', title: 'Gerettet', desc: 'Mit einem Joker deine Serie gehalten', test: (s) => Object.keys(s.jokers).length > 0 },
-    { id: 'streak30', icon: 'calendar', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30 },
+    { id: 'joker-aktiv', icon: 'lifebuoy', title: 'Gerettet', desc: 'Mit einem Joker deine Serie gehalten', test: (s) => Object.keys(s.jokers).length > 0, count: (s) => new Set(Object.values(s.jokers)).size },
+    { id: 'streak30', icon: 'calendar', title: 'Monatsmarathon', desc: '30 Tage in Folge gelernt', test: () => streakInfo().best >= 30, count: () => runsAtLeast(streakInfo().runs, 30) },
+    { id: 'pure7', icon: 'flag', title: 'Ohne Netz', desc: '7 Tage in Folge gelernt, ganz ohne Joker', test: () => streakInfo().pureBest >= 7, count: () => runsAtLeast(streakInfo().pureRuns, 7) },
+    { id: 'pure30', icon: 'dumbbell', title: 'Eiserne Serie', desc: '30 Tage in Folge gelernt, ganz ohne Joker', test: () => streakInfo().pureBest >= 30, count: () => runsAtLeast(streakInfo().pureRuns, 30) },
+    { id: 'pure100', icon: 'pyramid', title: 'Unzerbrechlich', desc: '100 Tage in Folge gelernt, ganz ohne Joker', test: () => streakInfo().pureBest >= 100, count: () => runsAtLeast(streakInfo().pureRuns, 100) },
     { id: 'quests', icon: 'map', title: 'Wochen-Champion', desc: 'Alle drei Wochen-Quests einer Woche geschafft' },
     { id: 'level5', icon: 'rocket', title: 'Aufsteiger', desc: 'Level 5 erreicht', test: () => levelInfo().level >= 5 },
     { id: 'level10', icon: 'chartUp', title: 'Durchstarter', desc: 'Level 10 erreicht', test: () => levelInfo().level >= 10 },
     { id: 'cards50', icon: 'cards', title: 'Kartenprofi', desc: '50 Karteikarten wiederholt', test: (s) => s.stats.reviews >= 50 },
     { id: 'blitz', icon: 'bolt', title: 'Blitzmerker', desc: '200 Punkte in der Blitzrunde', test: (s) => s.stats.blitzBest >= 200 },
     { id: 'gamer', icon: 'gamepad', title: 'Spielkind', desc: '10 Mini-Spiele gespielt', test: (s) => s.stats.games >= 10 },
-    { id: 'master', icon: 'cap', title: 'Themen-Meister', desc: 'Alle Lektionen eines Themas abgeschlossen' },
-    { id: 'ace', icon: 'trophy', title: 'Prüfungsass', desc: '100 % im Abschlusstest' },
+    { id: 'master', icon: 'cap', title: 'Themen-Meister', desc: 'Alle Lektionen eines Themas abgeschlossen', count: topicsMastered },
+    { id: 'ace', icon: 'trophy', title: 'Prüfungsass', desc: '100 % im Abschlusstest', count: (s) => Object.values(s.topics).filter((t) => t.test && t.test.best >= 1).length },
   ];
 
   function award(id) {
@@ -728,6 +758,13 @@
     save();
     LA.fx && LA.fx.toast(`Abzeichen: ${b.title}`, b.desc, 'badge', b.icon);
     return true;
+  }
+
+  /** Wie oft ein Abzeichen erreicht wurde (mindestens 1, wenn erhalten; 0 sonst) */
+  function badgeCount(id) {
+    if (!state.badges[id]) return 0;
+    const b = BADGES.find((x) => x.id === id);
+    return Math.max(1, (b && b.count && b.count(state)) || 0);
   }
 
   function checkBadges() {
@@ -796,7 +833,7 @@
     isFav, favCount, toggleFav, moveFav, pruneFavs, labState, labCount, setLab, pruneLabs, cardState, reviewCard, dueCount, pruneCards, INTERVALS,
     cardEdits, ownCards, editCard, saveOwnCard, deleteOwnCard, pruneCardEdits,
     notes, openNotes, addNote, updateNote, deleteNote, activity, claimQuest, questDone, dailyAnswer, dailyRetry,
-    BADGES, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
+    BADGES, badgeCount, award, setBlitz, setting, setGoal, ROUND_SIZES, roundSize,
     exportJSON, importJSON, reset,
     doc: () => doc, applyDoc, merge, canon, device,
   };

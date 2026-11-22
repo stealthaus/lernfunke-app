@@ -16,7 +16,8 @@
    * Ein Trainer für zwei Stapel: ein Thema (#/t/<id>/karten) oder eine ganze Lernreise
    * (#/r/<reise>/karten). Jede Karte trägt ihr Thema (_topic), dort liegt ihr Fach –
    * was im Reise-Stapel gelernt wird, zählt also auch im Thema und umgekehrt.
-   * Rundengröße kommt aus den Einstellungen: fällige Karten zuerst, der Rest wird mit neuen aufgefüllt. */
+   * Rundengröße kommt aus den Einstellungen: fällige Karten zuerst, der Rest wird mit neuen aufgefüllt.
+   * In der Runde selbst liegen fällige und neue Karten gemischt durcheinander. */
 
   function classify(cards) {
     const today = LA.today();
@@ -193,7 +194,7 @@
       } else if (size) {
         cta = [h('div', null, h('strong', null, `${size} Karten für heute`),
                  h('div', { class: 'muted' }, `${dueNow.length} fällig · ${newNow.length} neu` + (later ? ` · ${later} weitere fällig in der nächsten Runde` : ''))),
-               h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => session([...dueNow, ...newNow], true) }, icon('play'), 'Lernen starten')];
+               h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => session(LA.shuffle([...dueNow, ...newNow]), true) }, icon('play'), 'Lernen starten')];
       } else {
         cta = [h('div', null, h('strong', null, 'Alles erledigt für heute'), h('div', { class: 'muted' }, 'Deine Karten sind frisch im Gedächtnis. Morgen geht’s weiter.')),
                h('button', { class: 'btn btn-soft', type: 'button', onclick: () => session(LA.sample(all, max), false) }, 'Frei üben – Fächer bleiben unverändert')];
@@ -463,6 +464,48 @@
       topics: selected,
       extra: (rerender) => stationPanel(sr, topics, rerender),
     });
+  };
+
+  /* ---------- Alle Karteikarten: je Lernreise ein eigener Stapel (nicht gemischt), dazu Themen ohne Reise ----------
+   * Nur ein schneller Einstieg – gelernt wird im jeweiligen Reise- oder Themenstapel. */
+  LA.views.allCards = () => {
+    const archived = LA.store.setting('seriesArchived') || [];
+    const withStats = (r) => ({ ...r, ...LA.cardsOverview(r.ids) });
+    const series = LA.series
+      .filter((sr) => sr.topics.some((id) => LA.catalogEntry(id)))
+      .map((sr) => withStats({ title: sr.title, href: `#/r/${sr.id}/karten`, ids: LA.seriesCardTopics(sr), archived: archived.includes(sr.id), route: true }));
+    const loose = LA.catalog
+      .filter((t) => !LA.seriesOf(t.id))
+      .map((t) => withStats({ title: t.title, href: `#/t/${t.id}/karten`, ids: [t.id], glyph: t.icon || 'book' }))
+      .filter((r) => r.total);
+    const active = series.filter((r) => !r.archived);
+    const best = [...active, ...loose].filter((r) => r.open).sort((a, b) => b.due - a.due || b.open - a.open)[0];
+    const openAll = [...active, ...loose].reduce((a, r) => a + r.open, 0);
+
+    const seg = (n, color, label) => (n ? h('span', { class: 'ds-seg', title: `${label}: ${n}`, style: { flex: String(n), '--box': color } }) : null);
+    const row = (r) => h('a', { class: 'ds-row ac-row', href: r.href, 'aria-label': `${r.title}: ${r.due} fällig, ${r.fresh} neu, ${LA.plural(r.total, 'Karte', 'Karten')}` },
+      h('span', { class: 'ds-icon' }, r.route ? icon('route') : LA.glyph(r.glyph)),
+      h('span', { class: 'ds-title' }, r.title),
+      h('span', { class: 'ds-bar' }, seg(r.fresh + r.locked, 'var(--muted)', 'Neu'), r.boxes.map((n, b) => seg(n, `var(--box-${b + 1})`, `Fach ${b + 1}`))),
+      h('span', { class: 'ds-meta' }, r.due ? [h('strong', null, `${r.due} fällig`), r.fresh ? ` · ${r.fresh} neu` : null] : r.fresh ? `${r.fresh} neu` : LA.plural(r.total, 'Karte', 'Karten')),
+      h('span', { class: 'deck-switch-go' }, icon('arrowRight')));
+    const section = (title, rows) => (rows.length ? h('section', { class: 'deck-stations' }, h('div', { class: 'section-head' }, h('h2', null, title)), h('div', { class: 'ds-list card' }, rows.map(row))) : null);
+
+    return {
+      el: h('div', { class: 'page cards-page' },
+        h('a', { class: 'back-link', href: '#/' }, icon('arrowLeft'), 'Startseite'),
+        h('h1', null, 'Alle Karteikarten'),
+        h('p', { class: 'muted' }, 'Jede Lernreise hat ihren eigenen Stapel. Tipp eine Reise an, um ihre Karten zu lernen – die Fächer sind dieselben wie in den Themen.'),
+        h('div', { class: 'cards-cta card' },
+          best
+            ? [h('div', null, h('strong', null, `${LA.plural(openAll, 'Karte', 'Karten')} offen`),
+                 h('div', { class: 'muted' }, `Am meisten wartet in „${best.title}“: ${best.due} fällig · ${best.fresh} neu`)),
+               h('a', { class: 'btn btn-primary btn-lg', href: best.href }, icon('play'), 'Weiterlernen')]
+            : h('div', null, h('strong', null, 'Alles erledigt für heute'), h('div', { class: 'muted' }, 'In keinem Stapel ist gerade etwas fällig.'))),
+        section('Lernreisen', active),
+        section('Themen ohne Lernreise', loose),
+        section('Archivierte Lernreisen', series.filter((r) => r.archived))),
+    };
   };
 
   /** Stationen mit Häkchen und Fächer-Balken (gleiche Farben wie die Leitner-Grafik) */

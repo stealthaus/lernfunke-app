@@ -22,6 +22,7 @@
     [/^\/r\/([^/]+)\/labs$/, 'labs', ['seriesId']],
     [/^\/labs$/, 'labs', []],
     [/^\/notizen$/, 'notes', []],
+    [/^\/karten$/, 'allCards', []],
     [/^\/tagesfrage$/, 'daily', []],
   ];
 
@@ -65,7 +66,9 @@
         h('a', { class: 'tstat tstat-streak', href: '#/profil', title: 'Lernserie (Tage in Folge) und Joker' }, h('span', { class: 'tstat-emoji' }, icon('flame')), streakEl, boostEl),
         h('a', { class: 'tstat', href: '#/profil', title: 'XP heute / Tagesziel' }, h('span', { class: 'tstat-emoji tstat-bolt' }, icon('bolt')), todayEl),
         h('a', { class: 'tstat tstat-level', href: '#/profil', title: 'Dein Level – der Ring zeigt, wie weit es bis zum nächsten ist' }, ringBox, levelEl)),
-      h('div', { class: 'top-actions' }, soundBtn, themeBtn, LA.notes.button(),
+      h('div', { class: 'top-actions' }, soundBtn, themeBtn,
+        h('a', { class: 'icon-btn', href: '#/karten', 'aria-label': 'Alle Karteikarten', title: 'Alle Karteikarten' }, icon('cards')),
+        LA.notes.button(),
         h('a', { class: 'icon-btn', href: '#/profil', 'aria-label': 'Profil & Einstellungen' }, icon('user')))));
 
   function updateHeader() {

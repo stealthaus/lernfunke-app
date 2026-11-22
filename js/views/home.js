@@ -400,7 +400,7 @@
         }));
       const list = g[seriesTab];
       seriesWrap.replaceChildren(h('section', { class: 'series-list' + (seriesTab === 'archived' ? ' is-archive' : '') },
-        h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen')),
+        h('div', { class: 'section-head' }, h('h2', null, 'Lernreisen'), h('a', { class: 'btn btn-soft', href: '#/karten' }, icon('cards'), 'Alle Karteikarten')),
         tabs,
         list.length ? list.map((sr) => seriesCard(sr, renderSeries, renderChallenges)) : h('p', { class: 'muted series-empty' }, SERIES_EMPTY[seriesTab])));
     };
@@ -571,6 +571,7 @@
       h('dl', { class: 'streak-facts' },
         h('div', null, h('dt', null, 'Aktuelle Serie'), h('dd', null, LA.plural(si.days, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Längste Serie'), h('dd', null, LA.plural(si.best, 'Tag', 'Tage'))),
+        h('div', null, h('dt', null, 'Längste ohne Joker'), h('dd', null, LA.plural(si.pureBest, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–')),
         h('div', null, h('dt', null, 'XP-Boost'), h('dd', null, boostText()))),
       h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er beschleunigt nur dein Level. Leichter wird dadurch nichts: Das Tagesziel zählt die XP ohne Boost, und die Serie hält jeder Tag, an dem du lernst.`));
@@ -581,11 +582,15 @@
       return b.next ? `${now} · ×${LA.fmtMult(b.next.mult)} ab ${LA.plural(b.next.days, 'Tag', 'Tagen')}` : now;
     }
 
-    const badges = h('div', { class: 'badges' }, LA.store.BADGES.map((b) =>
-      h('div', { class: 'badge' + (st.badges[b.id] ? ' earned' : ''), title: st.badges[b.id] ? 'Erhalten am ' + st.badges[b.id] : 'Noch nicht erhalten' },
+    const badges = h('div', { class: 'badges' }, LA.store.BADGES.map((b) => {
+      const n = LA.store.badgeCount(b.id);
+      const title = st.badges[b.id] ? `Zuerst erhalten am ${st.badges[b.id]}${n > 1 ? ` · ${n}-mal erreicht` : ''}` : 'Noch nicht erhalten';
+      return h('div', { class: 'badge' + (st.badges[b.id] ? ' earned' : ''), title },
+        n > 1 ? h('div', { class: 'badge-count', 'aria-label': `${n}-mal erreicht` }, `×${n}`) : null,
         h('div', { class: 'badge-emoji' }, LA.glyph(b.icon, 'tile')),
         h('div', { class: 'badge-title' }, b.title),
-        h('div', { class: 'badge-desc' }, b.desc))));
+        h('div', { class: 'badge-desc' }, b.desc));
+    }));
 
     const fileInput = h('input', { type: 'file', accept: 'application/json', hidden: true });
     fileInput.addEventListener('change', async () => {

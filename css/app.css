@@ -1537,6 +1537,17 @@ a.ch-token:hover {
   border: 1px solid var(--border);
   opacity: 0.55;
 }
+.badge {
+  position: relative;
+}
+.badge-count {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
 .badge .badge-emoji {
   font-size: 2rem;
 }
@@ -1948,9 +1959,29 @@ button.back-link {
 .ds-row.off .ds-meta {
   opacity: 0.45;
 }
+/* Seite „Alle Karteikarten“: Zeilen sind Links, statt Häkchen ein Pfeil am Ende */
+.ac-row {
+  grid-template-columns: auto minmax(0, 1fr) minmax(90px, 200px) 7rem auto;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
 @media (max-width: 520px) {
   .ds-row {
     grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+  .ac-row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+  .ac-row .ds-bar {
+    grid-column: 2 / -1;
+  }
+  .ac-row .deck-switch-go {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .ac-row .ds-meta {
+    grid-column: 3;
   }
   .ds-bar {
     grid-column: 3 / -1;
@@ -2038,6 +2069,18 @@ button.back-link {
   padding: 16px;
   background: rgb(0 0 0 / 0.45);
   animation: fadeIn 0.2s;
+}
+/* Dialoge folgen dem sichtbaren Bereich über der Bildschirmtastatur (js/core/fx.js) */
+.kb-open .modal-overlay {
+  top: var(--vv-top, 0);
+  bottom: auto;
+  height: var(--vv-h, 100%);
+  place-items: start center;
+  overflow-y: auto;
+}
+.kb-open .modal,
+.kb-open .card-editor {
+  max-height: none;
 }
 .modal {
   width: min(420px, 100%);

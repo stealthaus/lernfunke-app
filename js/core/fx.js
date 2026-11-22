@@ -152,6 +152,28 @@
     setTimeout(() => el.remove(), 1100);
   }
 
+  /* ---------- Bildschirmtastatur ----------
+   * iOS-Safari legt die Tastatur über die Seite, ohne das Fenster zu verkleinern: Ein mittig
+   * ausgerichteter Dialog rutscht dann mit seinem Textfeld darunter. Darum folgen Dialoge dem
+   * sichtbaren Bereich (visualViewport): Lage und Höhe als CSS-Variablen, bei offener Tastatur
+   * oben statt mittig (Klasse kb-open), und das fokussierte Feld wird in den Blick gerollt. */
+  const vv = window.visualViewport;
+  if (vv) {
+    const root = document.documentElement;
+    const sync = () => {
+      root.style.setProperty('--vv-top', vv.offsetTop + 'px');
+      root.style.setProperty('--vv-h', vv.height + 'px');
+      root.classList.toggle('kb-open', window.innerHeight - vv.height > 120);
+    };
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    sync();
+    document.addEventListener('focusin', (e) => {
+      const field = e.target.closest && e.target.closest('.modal-overlay textarea, .modal-overlay input');
+      if (field) setTimeout(() => field.scrollIntoView({ block: 'nearest' }), 300);
+    });
+  }
+
   /* ---------- Dialog ---------- */
   function dialog({ title, text, ok = 'OK', cancel = 'Abbrechen', danger }) {
     return new Promise((resolve) => {

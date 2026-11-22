@@ -294,6 +294,22 @@
     return { due, fresh: fresh.size, open: due + fresh.size, dueNow, newNow, size: dueNow + newNow };
   };
 
+  /** Wie cardsToday, dazu die Fächer und die Stapelgröße – ohne die Inhalte zu laden (Seite „Alle Karteikarten“).
+   *  { …cardsToday, boxes: [Fach 1–5], total, locked: neue Karten aus noch nicht geschafften Lektionen } */
+  LA.cardsOverview = (topicIds) => {
+    const today = LA.cardsToday(topicIds);
+    const boxes = [0, 0, 0, 0, 0];
+    const seen = new Set();
+    topicIds.forEach((id) => (cardIdsOf(id) || []).forEach((cid) => {
+      if (seen.has(cid)) return;
+      seen.add(cid);
+      const cs = LA.store.cardState(id, cid);
+      if (cs) boxes[cs.box - 1]++;
+    }));
+    const started = boxes.reduce((a, b) => a + b, 0);
+    return { ...today, boxes, total: seen.size, locked: Math.max(0, seen.size - started - today.fresh) };
+  };
+
   LA.setSeriesCardTopics = (sr, ids) => {
     const all = { ...(LA.store.setting('cardsOff') || {}) };
     all[sr.id] = sr.topics.filter((id) => !ids.includes(id));
