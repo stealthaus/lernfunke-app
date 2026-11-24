@@ -86,13 +86,15 @@
     const si = LA.store.streakInfo();
     streakEl.textContent = si.days;
     streakEl.parentElement.classList.toggle('dim', !si.days);
-    // Flamme: gefüllt und farbig, sobald heute gelernt wurde – sonst nur Umriss (Form + Farbe, nicht nur Farbe)
+    // Flamme: gefüllt und farbig, sobald der Tag die Serie hält (Tagesziel erreicht) – sonst nur Umriss (Form + Farbe, nicht nur Farbe)
     streakEl.parentElement.classList.toggle('is-lit', si.learnedToday);
+    const goal = LA.store.get().goal;
+    const todayTxt = si.learnedToday ? 'Tagesziel geschafft' : `heute ${LA.store.todayXP()} von ${goal} XP`;
     const boost = LA.store.xpBoost();
     const boostTxt = boost.mult > 1 ? '×' + LA.fmtMult(boost.mult) : '';
     boostEl.textContent = boostTxt;
     boostEl.hidden = !boostTxt;
-    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}, heute ${si.learnedToday ? 'geschafft' : 'noch offen'}${boostTxt ? `, XP-Boost ${boostTxt}` : ''}, ${si.left} von ${si.perMonth} Jokern übrig`);
+    streakEl.parentElement.setAttribute('aria-label', `Lernserie: ${LA.plural(si.days, 'Tag', 'Tage')}, ${todayTxt}${boostTxt ? `, XP-Boost ${boostTxt}` : ''}, ${si.left} von ${si.perMonth} Jokern übrig`);
     const lvl = LA.store.levelInfo();
     ringBox.replaceChildren(LA.ui.ring(lvl.pct, 22, 4));
     levelEl.textContent = `Lv ${lvl.level}`;

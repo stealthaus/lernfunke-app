@@ -197,7 +197,7 @@
                h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => session(LA.shuffle([...dueNow, ...newNow]), true) }, icon('play'), 'Lernen starten')];
       } else {
         cta = [h('div', null, h('strong', null, 'Alles erledigt für heute'), h('div', { class: 'muted' }, 'Deine Karten sind frisch im Gedächtnis. Morgen geht’s weiter.')),
-               h('button', { class: 'btn btn-soft', type: 'button', onclick: () => session(LA.sample(all, max), false) }, 'Frei üben – Fächer bleiben unverändert')];
+               h('button', { class: 'btn btn-soft', type: 'button', onclick: () => session(LA.sample(all, max), false) }, 'Frei üben')];
       }
       root.replaceChildren(h('div', { class: 'page cards-page' },
         h('a', { class: 'back-link', href: o.back.href }, icon('arrowLeft'), o.back.label),

@@ -27,16 +27,26 @@
 
   /* ---------- Wochen-Quests ----------
    * Jede Woche drei Quests: immer eine mit Karteikarten (Wiederholen bringt das meiste fürs Behalten),
-   * dazu zwei aus verschiedenen Gruppen. Jede bringt QUEST_XP, alle drei zusammen zusätzlich BONUS_XP. */
+   * dazu zwei aus verschiedenen Gruppen. Jede bringt QUEST_XP, alle drei zusammen zusätzlich BONUS_XP.
+   * Mengen-Quests (mit `per`) richten sich nach dem eigenen Schnitt: Ziel = SCALE typische Lerntage
+   * aus den BASE_DAYS Tagen vor Wochenbeginn (mindestens BASE_MIN Lerntage, sonst `targets`), gerundet
+   * auf `step`, nie unter den festen `targets`. Hängt nur am Stand vor Wochenbeginn – die Woche bleibt fest. */
   const QUEST_XP = 30;
   const BONUS_XP = 50;
   const st = () => LA.store.get();
+  const BASE_DAYS = 28;
+  const BASE_MIN = 7;
+  const SCALE = [3, 3.5, 4];
+  const SCALED_FROM = '2026-11-30'; // laufende Woche würfelt nicht neu
   const QUESTS = [
     { id: 'reviews', group: 'cards', targets: [20, 30, 40], text: (n) => `Wiederhole ${n} Karteikarten`,
+      per: (d) => LA.store.activity(d).reviews || 0, step: 10,
       value: (w) => w.sum('reviews') },
     { id: 'lessons', group: 'lessons', targets: [2, 3], text: (n) => `Schließe ${n} Lektionen ab`,
+      per: (d) => LA.store.activity(d).lessons || 0, step: 1,
       value: (w) => w.sum('lessons') },
     { id: 'perfect', group: 'lessons', targets: [1, 2], text: (n) => (n === 1 ? 'Schaffe eine Lektion mit 3 Sternen' : `Schaffe ${n} Lektionen mit 3 Sternen`),
+      per: (d) => LA.store.activity(d).perfect || 0, step: 1,
       value: (w) => w.sum('perfect') },
     { id: 'goaldays', group: 'days', targets: [3, 4], text: (n) => `Erreiche an ${n} Tagen dein Tagesziel`,
       value: (w) => w.days.filter((d) => (st().days[d] || 0) >= st().goal).length },
@@ -50,6 +60,7 @@
     { id: 'games', group: 'games', targets: [2, 3], until: '2026-11-23', text: (n) => `Spiele ${n} Mini-Spiele`,
       value: (w) => w.sum('games') },
     { id: 'xp', group: 'xp', targets: [250, 350], text: (n) => `Sammle ${n} XP`,
+      per: (d) => st().days[d] || 0, step: 50,
       value: (w) => w.days.reduce((a, d) => a + (st().days[d] || 0), 0) },
     // Favoriten wiederholen: erst ab dieser Woche im Pool (sonst würfelt die laufende Woche neu)
     { id: 'favtest', group: 'favs', targets: [1, 2], since: '2026-11-23', needsFavs: true,
@@ -61,6 +72,23 @@
   /** Favoriten, die schon vor dem Tag gesetzt waren – hängt nur am gespeicherten Stand */
   const favsBefore = (day) => Object.values(st().topics).reduce((a, t) =>
     a + Object.values(t.favs || {}).filter((at) => at && at < day).length, 0);
+
+  /** Typischer Lerntag vor Wochenbeginn für eine Mengen-Quest – null ohne genug Verlauf */
+  function typical(q, start) {
+    const days = Array.from({ length: BASE_DAYS }, (_, i) => LA.addDays(start, i - BASE_DAYS));
+    const active = days.filter((d) => (st().days[d] || 0) > 0);
+    if (active.length < BASE_MIN) return null;
+    return active.reduce((a, d) => a + q.per(d), 0) / active.length;
+  }
+  /** Ziel einer Quest in dieser Woche */
+  function targetOf(q, start, rnd) {
+    const fixed = pick(rnd, q.targets);
+    if (!q.per || start < SCALED_FROM) return fixed;
+    const base = typical(q, start);
+    if (base == null) return fixed;
+    const n = Math.round((base * pick(rnd, SCALE)) / q.step) * q.step;
+    return Math.max(fixed, n);
+  }
 
   /** Die Quests dieser Woche mit Stand: { start, daysLeft, list: [{ key, text, target, value, done }], allDone, bonus } */
   function week() {
@@ -83,7 +111,7 @@
       rest = rest.filter((x) => x.group !== q.group);
     }
     const list = chosen.map((q) => {
-      const target = pick(rnd, q.targets);
+      const target = targetOf(q, start, rnd);
       const key = `${start}|${q.id}`;
       const value = q.value(w);
       return { key, id: q.id, text: q.text(target), target, value: Math.min(value, target), done: LA.store.questDone(key), reached: value >= target };

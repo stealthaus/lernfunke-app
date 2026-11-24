@@ -12,8 +12,11 @@
  *  · Notizen { [id]: { v, t } } – wie Einzelwerte; tools/notes.js liest und erledigt sie am Rechner.
  *  · Tagesaktivität act { 'YYYY-MM-DD': { reviews|lessons|perfect|games|dq|blitz|…: { [gerät]: n } } } – für
  *    Wochen-Quests, Tagesfrage und Statistik (js/core/stats.js). Zähler wie oben; blitz (Tagesbestwert),
- *    dq (Tagesfrage: 1 falsch, 2 richtig) und due (fällige Karten des Tages) zählen als Maximum statt Summe.
- *    Karten: rnew (neu gelernt), rdue (fällige wiederholt), rok (gewusst); Lektionen: lnew (zum ersten Mal). Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
+ *    dq (Tagesfrage: 1 falsch, 2 richtig), due (fällige Karten des Tages) und gz (1 = Tagesziel an dem Tag
+ *    erreicht – so bricht ein später höheres Ziel die Serie nicht rückwirkend) zählen als Maximum statt Summe.
+ *    Karten: rnew (neu gelernt), rdue (fällige wiederholt), rok (gewusst); Lektionen: lnew (zum ersten Mal).
+ *    Karten zusätzlich je Thema als 'reviews@thema', 'rnew@…', 'rdue@…', 'rok@…', 'due@…' – so rechnet die
+ *    Statistik mit der jetzigen Auswahl (archivierte Reisen, abgewählte Stationen), auch rückwirkend. Quests { 'woche|quest': 'YYYY-MM-DD' } – frühestes Datum.
  *  · Joker { 'YYYY-MM-DD': 'YYYY-MM-DD' } – gehaltener Tag → Einsatzdatum, frühestes Datum gewinnt.
  *  · Tagesfrage zum Wiederholen dqRetry { [Fragen-ID]: { v: { topic, day } | null, t } } – wie Einzelwerte.
  * Neues Feld im Zustand ⇒ auch in fresh(), merge(), derive() und fromV1() ergänzen. */
@@ -31,7 +34,11 @@
   /** Stufen fürs Tagesziel (XP). Ein älterer, kleinerer Wert zählt als die nächsthöhere Stufe (100 → 150). */
   const GOALS = [150, 300, 500, 800];
   const goalOf = (v) => GOALS.find((g) => g >= v) || v;
-  const ACT_MAX = ['blitz', 'dq', 'due']; // Tagesaktivität: Maximum statt Summe
+  const ACT_MAX = ['blitz', 'dq', 'due', 'gz']; // Tagesaktivität: Maximum statt Summe
+  const isMax = (key) => ACT_MAX.includes(key.split('@')[0]); // auch je Thema: 'due@thema'
+  const KEEP_TOPIC_ACT_DAYS = 190; // Zahlen je Thema: Statistik zeigt bis 90 Tage samt Vergleich davor
+  // Ab diesem Tag hält nur ein Tag mit erreichtem Tagesziel die Serie (davor: jeder Tag mit XP)
+  const GOAL_STREAK_FROM = '2026-11-24';
 
   const readLS = (key) => {
     try {
@@ -163,6 +170,8 @@
     while (keys.length > KEEP_DAYS) delete d.days[keys.shift()];
     const actKeys = Object.keys(d.act).sort();
     while (actKeys.length > KEEP_ACT_DAYS) delete d.act[actKeys.shift()];
+    const topicCut = LA.addDays(LA.today(), -KEEP_TOPIC_ACT_DAYS);
+    actKeys.filter((k) => k < topicCut).forEach((k) => Object.keys(d.act[k]).forEach((key) => key.includes('@') && delete d.act[k][key]));
     const cut = LA.addDays(LA.today(), -7 * KEEP_QUEST_WEEKS);
     Object.keys(d.quests).forEach((k) => k.slice(0, 10) < cut && delete d.quests[k]);
     if (keys.length) Object.keys(d.jokers).forEach((k) => k < keys[0] && delete d.jokers[k]);
@@ -211,7 +220,7 @@
     const act = {};
     for (const k in d.act) {
       act[k] = {};
-      for (const key in d.act[k]) act[k][key] = ACT_MAX.includes(key) ? Math.max(0, ...Object.values(d.act[k][key])) : sum(d.act[k][key]);
+      for (const key in d.act[k]) act[k][key] = isMax(key) ? Math.max(0, ...Object.values(d.act[k][key])) : sum(d.act[k][key]);
     }
     return {
       xp: sum(d.xp),
@@ -306,7 +315,7 @@
     const t = LA.today();
     const day = doc.act[t] || (doc.act[t] = {});
     const g = day[key] || (day[key] = {});
-    if (ACT_MAX.includes(key)) g[device] = Math.max(g[device] || 0, n);
+    if (isMax(key)) g[device] = Math.max(g[device] || 0, n);
     else inc(g, n);
   }
   /** Aktivität eines Tages (abgeleitet): { reviews, lessons, … } */
@@ -341,11 +350,23 @@
     if (n) out.push(n);
     return out;
   }
+  /** Hält der Tag die Serie? Vor GOAL_STREAK_FROM jeder Tag mit XP, danach nur mit erreichtem Tagesziel –
+   *  gemerkt (gz) oder nach dem jetzigen Ziel, damit ein später höheres Ziel nichts rückwirkend bricht. */
+  function keeps(d) {
+    const xp = state.days[d] || 0;
+    if (d < GOAL_STREAK_FROM) return xp > 0;
+    return xp >= state.goal || ((state.act[d] || {}).gz || 0) > 0;
+  }
+  /** Tagesziel heute erreicht → am Tag festhalten (Speichern macht der Aufrufer) */
+  function noteGoal() {
+    const t = LA.today();
+    if ((state.days[t] || 0) >= state.goal && !(((doc.act[t] || {}).gz || {})[device])) bump('gz', 1);
+  }
   let streakCache = null;
   function streakInfo() {
     const today = LA.today();
     if (streakCache && streakCache.state === state && streakCache.today === today) return streakCache.info;
-    const learned = (d) => state.days[d] > 0;
+    const learned = (d) => keeps(d);
     const kept = [...new Set([...Object.keys(state.days).filter(learned), ...Object.keys(state.jokers)])]
       .filter((d) => d <= today)
       .sort();
@@ -385,7 +406,8 @@
       runs, // Länge jeder Serie (mit Joker-Tagen), älteste zuerst
       pure, pureBest: Math.max(0, ...pureRuns), pureRuns, // dasselbe ohne Joker-Tage
       jokerDays, // alle eingesetzten Joker-Tage, älteste zuerst
-      learnedToday: learned(today),
+      learnedToday: learned(today), // heute hält die Serie schon (ab GOAL_STREAK_FROM: Tagesziel erreicht)
+      goalRule: today >= GOAL_STREAK_FROM,
       offer, // { gap: [Tage], saves: Serienlänge danach } oder null
     };
     streakCache = { state, today, info };
@@ -427,6 +449,7 @@
     inc(doc.xp, gained);
     inc(doc.days[t] || (doc.days[t] = {}), n);
     pruneDays(doc);
+    if ((todayBefore + n) >= state.goal) bump('gz', 1);
     save();
     if (levelInfo().level > before) LA.fx && LA.fx.levelUp(levelInfo().level);
     if (todayBefore < state.goal && state.days[t] >= state.goal) {
@@ -563,14 +586,15 @@
   function reviewCard(topicId, cardId, known) {
     const prev = cardState(topicId, cardId);
     noteDue(); // vor der Änderung: die Karte zählt heute noch als fällig
-    if (!prev) bump('rnew');
-    else if (prev.due <= LA.today()) bump('rdue');
-    if (known) bump('rok');
+    const both = (key) => (bump(key), bump(key + '@' + topicId));
+    if (!prev) both('rnew');
+    else if (prev.due <= LA.today()) both('rdue');
+    if (known) both('rok');
     // Neue Karten gelten als Fach 1 – gewusst heißt also mindestens Fach 2
     const box = known ? Math.min(5, (prev ? prev.box : 1) + 1) : 1;
     dt(topicId).cards[cardId] = reg({ box, due: LA.addDays(LA.today(), INTERVALS[box]), n: (prev ? prev.n : 0) + 1 });
     inc(doc.stats.reviews);
-    bump('reviews');
+    both('reviews');
     save();
     checkBadges();
     return box;
@@ -597,11 +621,34 @@
   function noteDue() {
     const t = LA.today();
     const ids = LA.cardTopics && LA.catalog.length ? LA.cardTopics() : Object.keys(state.topics);
-    const n = dueCount(ids) + (activity(t).rdue || 0);
-    const cur = ((doc.act[t] || {}).due || {})[device];
-    if (cur != null && cur >= n) return false;
+    const a = activity(t);
+    const mine = (key) => ((doc.act[t] || {})[key] || {})[device];
+    let changed = false;
+    // je Thema (alle, auch pausierte – die Auswahl wendet die Statistik an); gleiche Karte zählt beim ersten Thema
+    const per = dueByTopic(ids);
+    Object.keys(per).forEach((id) => {
+      const m = per[id] + (a['rdue@' + id] || 0);
+      const cur = mine('due@' + id);
+      if (m && (cur == null || cur < m)) (bump('due@' + id, m), (changed = true));
+    });
+    const n = dueCount(ids) + (a.rdue || 0);
+    const cur = mine('due');
+    if (cur != null && cur >= n) return changed;
     bump('due', n);
     return true;
+  }
+  /** Fällige Karten je Thema (ohne ausgeblendete). Gleiche Karte zählt nur einmal – zuerst bei den
+   *  zählenden Themen (first), dann bei den übrigen */
+  function dueByTopic(first) {
+    const seen = new Set();
+    const out = {};
+    const ids = [...new Set([...first, ...Object.keys(state.topics)])];
+    ids.forEach((id) => Object.entries((state.topics[id] || {}).cards || {}).forEach(([cardId, cs]) => {
+      if (seen.has(cardId) || (cardEdits(id)[cardId] || {}).hidden) return;
+      seen.add(cardId);
+      if (cs.due <= LA.today()) out[id] = (out[id] || 0) + 1;
+    }));
+    return out;
   }
   /** Beim Start der App und auf der Statistik-Seite: fällige Karten von heute festhalten */
   function recordDue() {
@@ -797,6 +844,8 @@
 
   function setGoal(n) {
     doc.goal = reg(n);
+    save();
+    noteGoal();
     save();
   }
 

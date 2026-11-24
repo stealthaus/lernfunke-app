@@ -49,7 +49,7 @@
     return h('div', { class: 'joker-offer', role: 'group', 'aria-label': 'Joker einsetzen' },
       icon('shield'),
       h('p', null,
-        h('strong', null, n === 1 ? 'Gestern nicht gelernt.' : `Seit dem ${since} nicht gelernt.`),
+        h('strong', null, n === 1 ? (si.goalRule ? 'Gestern Tagesziel verpasst.' : 'Gestern nicht gelernt.') : `Seit dem ${since} ${si.goalRule ? 'ohne Tagesziel' : 'nicht gelernt'}.`),
         ` Mit ${n === 1 ? 'einem Joker' : n + ' Jokern'} hältst du deine Serie von ${LA.plural(o.saves, 'Tag', 'Tagen')}. Diesen Monat hast du noch ${si.left} von ${si.perMonth}.`),
       h('button', {
         class: 'btn btn-ghost', type: 'button',
@@ -369,6 +369,19 @@
     return LA.byProgress(LA.series, seriesProgress).find(running) || null;
   }
 
+  /** Offene Stationen der aktiven Lernreise in Reihenfolge – daraus kommen die neuen Karten („Waage halten“) */
+  LA.nextStations = () => {
+    const sr = activeJourney();
+    return sr ? sr.topics.filter((id) => LA.catalogEntry(id) && LA.topicProgress(id).pct < 1) : [];
+  };
+  /** 0 → „keine neue Station“, 0.5 → „½ Station“, 1.5 → „1½ Stationen“ */
+  LA.stationsText = (s) => {
+    if (!s) return 'keine neue Station';
+    const whole = Math.floor(s);
+    const txt = (whole ? String(whole) : '') + (s % 1 ? '½' : '');
+    return `${txt} ${s > 1 ? 'Stationen' : 'Station'}`;
+  };
+
   /** Startseite (Reiter „Heute“): XP von heute, die Heute-Liste und nur die aktive Lernreise.
    *  Braucht nur Katalog und topics/meta.js – kein Thema wird dafür geladen. */
   LA.views.home = async () => {
@@ -398,6 +411,9 @@
     if (last) {
       const next = LA.nextLessonOf(last.id);
       lesson = { href: next ? `#/t/${last.id}/l/${next.id}` : `#/t/${last.id}`, title: next ? next.title : null, topic: last.title, started: !!st.lastTopic };
+      // Waage halten: so viele Stationen am Tag halten die fälligen Karten etwa auf dem Stand der letzten Woche
+      const bal = next && LA.stats.balance(LA.nextStations());
+      if (bal) lesson.topic += ` · Waage: ${LA.stationsText(bal.best.s)} am Tag`;
       // Das Thema hinter „Weiterlernen“ schon im Hintergrund holen – der Tipp darauf öffnet dann sofort
       setTimeout(() => LA.loadTopic(last.id).catch(() => {}), 300);
     }
@@ -596,9 +612,9 @@
         h('div', null, h('dt', null, 'Aktuelle Serie'), h('dd', null, LA.plural(si.days, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Längste Serie'), h('dd', null, LA.plural(si.best, 'Tag', 'Tage'))),
         h('div', null, h('dt', null, 'Längste ohne Joker'), h('dd', null, LA.plural(si.pureBest, 'Tag', 'Tage'))),
-        h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ gelernt' : si.days ? 'noch offen' : '–')),
+        h('div', null, h('dt', null, 'Heute'), h('dd', null, si.learnedToday ? '✓ Tagesziel' : si.days ? 'noch offen' : '–')),
         h('div', null, h('dt', null, 'XP-Boost'), h('dd', null, boostText()))),
-      h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er beschleunigt nur dein Level. Leichter wird dadurch nichts: Das Tagesziel zählt die XP ohne Boost, und die Serie hält jeder Tag, an dem du lernst.`));
+      h('p', { class: 'muted' }, `Serien-Boost: ${LA.store.xpBoost().tiers.slice().reverse().map((b) => `ab ${b.days} Tagen ×${LA.fmtMult(b.mult)}`).join(', ')}. Er beschleunigt nur dein Level. Leichter wird dadurch nichts: Das Tagesziel zählt die XP ohne Boost, und die Serie hält jeder Tag, an dem du dein Tagesziel erreichst.`));
 
     function boostText() {
       const b = LA.store.xpBoost();

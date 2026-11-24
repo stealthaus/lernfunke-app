@@ -61,7 +61,7 @@
       h('span', { class: 'st-grid', style: { bottom: '50%' } }, whole && max % 2 ? null : h('span', null, de(max / 2, 1))),
       cols.map((c) => {
         const t = total(c);
-        return h('div', { class: 'st-col' + (c.today ? ' today' : ''), title: c.title },
+        return h('div', { class: 'st-col' + (c.today ? ' today' : '') + (c.est ? ' est' : ''), title: c.title },
           t ? h('div', { class: 'st-stack', style: { height: at(t) } },
             c.segs.filter((s) => s.v > 0).map((s) => h('div', { class: 'st-seg ' + s.cls, style: { flexGrow: String(s.v) } }))) : null,
           c.tick != null ? h('span', { class: 'st-tick', style: { bottom: at(c.tick) } }) : null,
@@ -98,8 +98,11 @@
   function cardsSection(sum, s, n) {
     const gs = groups(n, s);
     let untracked = false;
+    let estimated = false;
     const cols = gs.map((g) => {
       const len = g.list.length;
+      const est = g.list.some((x) => x.estimated);
+      if (est) estimated = true;
       const tr = g.list.filter((x) => x.tracked);
       const old = g.list.filter((x) => !x.tracked).reduce((a, x) => a + x.reviews, 0);
       if (old) untracked = true;
@@ -112,7 +115,7 @@
         ? `Woche ab ${dm(g.first)}: Ø ${fmt(all / len)} Karten pro Tag` + (tick != null ? ` · Ø ${fmt(tick)} fällig` : '')
         : `${wd(g.first)} ${dm(g.first)}: ${LA.plural(all, 'Karte', 'Karten')}` + (tr.length ? ` (${fresh} neu, ${repeat} wiederholt)` : '') + (tick != null ? ` · ${tick} fällig` : '');
       return {
-        label: g.label, today: g.today, title, tick,
+        label: g.label, today: g.today, title: title + (est ? ' (geschätzt)' : ''), tick, est,
         segs: [{ v: repeat / len, cls: 'seg-repeat' }, { v: fresh / len, cls: 'seg-new' }, { v: old / len, cls: 'seg-old' }],
       };
     });
@@ -128,7 +131,7 @@
       }),
       h('div', { class: 'hm-legend' },
         swatch('seg-repeat', 'wiederholt'), swatch('seg-new', 'neu gelernt'), untracked ? swatch('seg-old', 'ältere Tage, nur Summe') : null,
-        swatch('st-swatch-tick', 'fällig')),
+        swatch('st-swatch-tick', 'fällig'), estimated ? swatch('st-swatch-est', 'fällig, geschätzt') : null),
       facts([
         ['Ø fällig pro Tag', fmt(sum.avgDue)],
         ['Ø wiederholt pro Tag', fmt(sum.avgRepeat)],
@@ -137,7 +140,8 @@
         ['Gewusst', pct(sum.okRate)],
         ['Fällig – Trend', trendText(sum.trend.due)],
       ]),
-      since ? h('p', { class: 'muted st-note' }, `Fällige Karten und die Aufteilung in neu und wiederholt zeichnet die App seit ${dm(since)} auf.`) : null);
+      since ? h('p', { class: 'muted st-note' }, `Fällige Karten und die Aufteilung in neu und wiederholt zeichnet die App seit ${dm(since)} auf.`) : null,
+      estimated ? h('p', { class: 'muted st-note' }, 'Alle Zahlen gelten für deine jetzige Auswahl – ohne archivierte Reisen und abgewählte Stationen. Für ältere Tage hat die App das nicht je Station aufgezeichnet; dort sind sie aus den Fächern deiner Karten geschätzt (gepunktet).') : null);
   }
 
   function forecastSection(sum) {
@@ -169,6 +173,35 @@
         ['Nächste 7 Tage', String(next7)],
         ['Neue Karten bereit', String(fresh)],
       ]));
+  }
+
+  /** Waage halten: wie viele Stationen am Tag die fälligen Karten etwa gleich halten – und was mehr oder weniger bedeutet */
+  function balanceSection() {
+    const ids = LA.nextStations ? LA.nextStations() : [];
+    const b = LA.stats.balance(ids);
+    if (!b) return null;
+    const r = (x) => de(Math.round(x), 0);
+    const name = (LA.catalogEntry(ids[0]) || {}).title;
+    const cols = b.options.map((o) => ({
+      label: o.s ? LA.stationsText(o.s).split(' ')[0] : '0',
+      today: o === b.best,
+      title: `${LA.stationsText(o.s)} am Tag: in einer Woche ≈ ${r(o.week)} fällig, Ø ${r(o.avg)} pro Tag`,
+      tick: b.target,
+      segs: [{ v: o.avg, cls: 'seg-due' }],
+    }));
+    const less = b.options.filter((o) => o.s < b.best.s).pop();
+    const more = b.options.find((o) => o.s > b.best.s);
+    return h('section', { class: 'card st-card' },
+      h('h2', null, 'Waage halten'),
+      h('p', { class: 'muted' }, `Wie viele Stationen am Tag halten deine fälligen Karten etwa beim Schnitt der letzten 7 Tage (Ø ${r(b.target)})? Gerechnet mit deinen Fächern, ${Math.round(b.ok * 100)} % gewusst und ≈ ${r(b.perStation)} neuen Karten je Station${name ? ` (ab „${name}“)` : ''}.`),
+      h('p', { class: 'st-verdict' }, b.best.s
+        ? `Lernst du jeden Tag etwa ${LA.stationsText(b.best.s)}, bleiben es in der nächsten Woche um die ${r(b.best.avg)} fälligen Karten pro Tag.`
+        : `Schon ohne neue Station sind es in der nächsten Woche um die ${r(b.best.avg)} fälligen Karten pro Tag – erst abbauen, dann weiter.`),
+      columnChart({ cols, values: true, whole: true, ariaLabel: `Fällige Karten pro Tag in der nächsten Woche, je nach Stationen am Tag: ${b.options.map((o) => `${LA.stationsText(o.s)} ${r(o.avg)}`).join(', ')}. Ziel ${r(b.target)}.` }),
+      h('div', { class: 'hm-legend' }, swatch('seg-due', 'Ø fällig pro Tag, nächste Woche'), swatch('st-swatch-tick', `Ziel: Ø ${r(b.target)} wie zuletzt`)),
+      less ? h('p', { class: 'st-note' }, h('strong', null, `Weniger (${LA.stationsText(less.s)} am Tag): `), `in einer Woche ≈ ${r(less.week)} fällig. Der Stapel schrumpft, neue Inhalte kommen langsamer.`) : null,
+      more ? h('p', { class: 'st-note' }, h('strong', null, `Mehr (${LA.stationsText(more.s)} am Tag): `), `in einer Woche ≈ ${r(more.week)} fällig. Schneller vorwärts, dafür jeden Tag mehr Wiederholen.`) : null,
+      h('p', { class: 'muted st-note' }, 'Neue Karten kommen nach 1, 2, 4 und 8 Tagen wieder. Was du heute lernst, spürst du deshalb vor allem in den nächsten Tagen – die Zahlen gelten, wenn du es jeden Tag so hältst.'));
   }
 
   function lessonsSection(sum, s, n) {
@@ -226,6 +259,7 @@
       h('p', { class: 'st-lead' }, h('strong', null, `Ø ${fmt(sum.avgReviews || 0)} Karten pro Tag`), ` in den letzten ${n} Tagen · ${heroTrend(sum.trend.reviews, n)}`),
       cardsSection(sum, s, n),
       forecastSection(sum),
+      balanceSection(),
       lessonsSection(sum, s, n));
   };
 })();

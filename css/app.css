@@ -2834,6 +2834,14 @@ a.note-where:hover span {
   height: 3px;
   background: var(--text);
 }
+/* Geschätzte Tage (alte Zählweise, auf die jetzige Auswahl umgerechnet): Strich gepunktet – Form, nicht nur Farbe */
+.st-col.est .st-tick,
+.st-swatch.st-swatch-est {
+  height: 0;
+  background: transparent;
+  border: 0;
+  border-top: 3px dotted var(--text);
+}
 .st-val {
   position: absolute;
   left: 0;
@@ -2881,6 +2889,9 @@ a.note-where:hover span {
   width: 14px;
   border: 0;
   background: var(--text);
+}
+.st-swatch.st-swatch-est {
+  width: 14px;
 }
 .st-facts {
   margin-top: 16px;
