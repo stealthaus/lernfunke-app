@@ -244,10 +244,20 @@
     return [...byId.values()];
   };
 
-  /** Stationen, deren Karten im Reise-Stapel landen – einzelne lassen sich abwählen (bleibt gespeichert) */
+  /** Station begonnen: eine Lektion geschafft oder schon Karten mit Fach – solche Karten fallen nie aus dem Stapel */
+  LA.stationStarted = (id) => {
+    const t = LA.store.get().topics[id] || {};
+    return Object.values(t.lessons || {}).some((l) => l.done) || Object.keys(t.cards || {}).length > 0;
+  };
+
+  /** Stationen, deren Karten im Reise-Stapel landen. Standard: nur begonnene – eine neu begonnene Station kommt
+   *  von selbst dazu. „Alle“ nimmt jede Station; einzeln an- oder abgewählte Stationen bleiben gespeichert
+   *  (Einstellung cardsPick: { [Reise]: { all, on, off } }). */
+  LA.seriesCardPick = (sr) => (LA.store.setting('cardsPick') || {})[sr.id] || { all: false, on: [], off: [] };
   LA.seriesCardTopics = (sr) => {
-    const off = (LA.store.setting('cardsOff') || {})[sr.id] || [];
-    return sr.topics.filter((id) => LA.catalogEntry(id) && !off.includes(id));
+    const p = LA.seriesCardPick(sr);
+    const on = p.on || [], off = p.off || [];
+    return sr.topics.filter((id) => LA.catalogEntry(id) && !off.includes(id) && (p.all || on.includes(id) || LA.stationStarted(id)));
   };
 
   /** Archivierte Lernreisen sind pausiert: ihre Karten zählen nirgends mit, die Tagesfrage kommt nicht aus ihnen.
@@ -333,10 +343,17 @@
     return { ...today, boxes, total: seen.size, locked: Math.max(0, seen.size - started - today.fresh) };
   };
 
-  LA.setSeriesCardTopics = (sr, ids) => {
-    const all = { ...(LA.store.setting('cardsOff') || {}) };
-    all[sr.id] = sr.topics.filter((id) => !ids.includes(id));
-    LA.store.setting('cardsOff', all);
+  /** Auswahl merken: ids = Stationen, die jetzt im Stapel sein sollen; mode 'all' | 'started' wechselt die Grundregel.
+   *  Gespeichert wird nur die Abweichung von der Regel – so rutschen später begonnene Stationen weiter von selbst nach. */
+  LA.setSeriesCardTopics = (sr, ids, mode) => {
+    const picks = { ...(LA.store.setting('cardsPick') || {}) };
+    const all = mode ? mode === 'all' : !!LA.seriesCardPick(sr).all;
+    const base = (id) => all || LA.stationStarted(id);
+    const on = sr.topics.filter((id) => ids.includes(id) && !base(id));
+    const off = sr.topics.filter((id) => !ids.includes(id) && base(id));
+    if (all || on.length || off.length) picks[sr.id] = { all, on, off };
+    else delete picks[sr.id];
+    LA.store.setting('cardsPick', picks);
   };
 
   LA.findTerm = (topic, term) => {

@@ -547,6 +547,8 @@ code {
   padding: 0.1em 0.35em;
   border-radius: 0;
   background: var(--surface-2);
+  /* lange Klassennamen (AggregateBased…Engine) dürfen umbrechen, sonst sprengen sie schmale Karten */
+  overflow-wrap: anywhere;
 }
 .term {
   display: inline;

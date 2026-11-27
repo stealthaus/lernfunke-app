@@ -2068,6 +2068,7 @@ text.f-c6 { fill: color-mix(in srgb, var(--c6) var(--ink-mix), black); }
   color: inherit;
   padding: 0;
   font-size: inherit;
+  overflow-wrap: normal;
 }
 .code-line {
   display: block;

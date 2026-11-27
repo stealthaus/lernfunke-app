@@ -515,13 +515,20 @@
   function stationPanel(sr, topics, rerender) {
     const on = new Set(LA.seriesCardTopics(sr));
     const deck = LA.seriesCards(topics.filter((t) => on.has(t.id)));
-    const pick = (ids) => {
+    const pick = (ids, mode) => {
       const y = window.scrollY;
-      LA.setSeriesCardTopics(sr, ids);
+      LA.setSeriesCardTopics(sr, ids, mode);
       rerender();
       window.scrollTo(0, y);
     };
-    const started = topics.filter((t) => LA.topicProgress(t.id).done).map((t) => t.id);
+    const started = topics.filter((t) => LA.stationStarted(t.id)).map((t) => t.id);
+    const mode = LA.seriesCardPick(sr);
+    const plain = !(mode.on || []).length && !(mode.off || []).length;
+    // Einzeln geänderte Häkchen: keiner der beiden Knöpfe ist dann „an“, ein Tipp setzt die Regel wieder rein
+    const modeSwitch = LA.ui.segmented([['started', 'Nur begonnene'], ['all', 'Alle']], plain ? (mode.all ? 'all' : 'started') : null,
+      (v) => pick(v === 'all' ? topics.map((t) => t.id) : started, v));
+    modeSwitch.setAttribute('role', 'group');
+    modeSwitch.setAttribute('aria-label', 'Stationen im Stapel');
     const seg = (n, color, label) => (n ? h('span', { class: 'ds-seg', title: `${label}: ${n}`, style: { flex: String(n), '--box': color } }) : null);
 
     const rows = topics.map((t, i) => {
@@ -542,11 +549,12 @@
     return h('section', { class: 'deck-stations' },
       h('div', { class: 'section-head' },
         h('h2', null, 'Stationen'),
-        h('div', { class: 'btn-row' },
-          h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => pick(topics.map((t) => t.id)) }, 'Alle'),
-          started.length && started.length < topics.length
-            ? h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => pick(started) }, 'Nur begonnene')
-            : null)),
+        modeSwitch),
+      h('p', { class: 'muted' }, !plain
+        ? 'Eigene Auswahl – einzelne Häkchen bleiben gespeichert.'
+        : mode.all
+          ? 'Alle Stationen sind im Stapel.'
+          : 'Im Stapel sind die begonnenen Stationen – beginnst du eine neue, kommt sie von selbst dazu.'),
       h('div', { class: 'ds-list card' }, rows));
   }
 
